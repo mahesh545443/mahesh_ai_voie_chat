@@ -1,7 +1,7 @@
 """
 ================================================================================
 PROJECT: MAHESH AI VOICE AGENT - STAGE 1 SUBMISSION
-VERSION: 9.0 (INTERVIEW READY)
+VERSION: 9.1 (DEPLOYMENT READY)
 AUTHOR: Mahesh
 DESCRIPTION:
     Voice bot that answers personality questions AS MAHESH using:
@@ -10,7 +10,10 @@ DESCRIPTION:
     - Edge-TTS for Text-to-Speech
     - Complete persona with 5 core interview answers
     
-    FIX: Added nest_asyncio.apply() to resolve voice issues on Streamlit Cloud.
+    FIXES:
+    1. Removed hardcoded HF_TOKEN (security fix).
+    2. Added nest_asyncio import.
+    3. Implemented nest_asyncio.apply() to fix voice issues on Streamlit Cloud.
 ================================================================================
 """
 
@@ -21,7 +24,7 @@ import asyncio
 import tempfile
 import time
 import os
-import nest_asyncio # <--- IMPORT IS HERE
+import nest_asyncio # <--- ADDED IMPORT
 
 # ==============================================================================
 # MAHESH'S PERSONA DATABASE (THE 5 KEY ANSWERS)
@@ -63,6 +66,7 @@ RESPONSE RULES:
 # ==============================================================================
 
 class Config:
+    # 🚨 SECURITY FIX: Using st.secrets to retrieve the token securely
     HF_TOKEN = st.secrets["HF_TOKEN"]
     
     MODEL_STT = "openai/whisper-large-v3-turbo"
@@ -109,8 +113,8 @@ class AudioEngine:
         start_t = time.time()
         
         try:
-            # FIX: Apply nest_asyncio to safely run an async operation 
-            # inside Streamlit's existing event loop on the server.
+            # 🔊 VOICE FIX: Apply nest_asyncio to allow asyncio.run() to work
+            # inside Streamlit's event loop on the cloud server.
             nest_asyncio.apply() # <--- IMPLEMENTED FIX HERE
 
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
@@ -126,8 +130,6 @@ class AudioEngine:
             return audio_bytes, (time.time() - start_t)
             
         except Exception as e:
-            # Optional: Log the error to debug if it still fails
-            # print(f"TTS Error: {e}") 
             return None, 0.0
 
 # ==============================================================================
