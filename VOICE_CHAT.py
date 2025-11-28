@@ -19,6 +19,7 @@ DESCRIPTION:
 import streamlit as st
 from huggingface_hub import InferenceClient
 import edge_tts
+from gtts import gTTS
 import asyncio
 import tempfile
 import time
@@ -109,9 +110,17 @@ class AudioEngine:
             await communicate.save(output_file)
         except Exception as e:
             raise Exception(f"Edge TTS Error: {str(e)}")
+    
+    def _generate_speech_gtts(self, text, output_file):
+        """Fallback: Generate speech using Google TTS."""
+        try:
+            tts = gTTS(text=text, lang='en', slow=False, tld='com')
+            tts.save(output_file)
+        except Exception as e:
+            raise Exception(f"gTTS Error: {str(e)}")
 
     def speak(self, text):
-        """Convert text to speech - FIXED FOR STREAMLIT CLOUD."""
+        """Convert text to speech - DUAL ENGINE (Edge-TTS + gTTS fallback)."""
         if "[ERROR]" in text: 
             return None, 0.0
         
@@ -121,26 +130,35 @@ class AudioEngine:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
 
-            # 🔊 FIX: Use get_event_loop() instead of asyncio.run() for better compatibility
+            # 🔊 TRY METHOD 1: Edge-TTS (Best Quality)
             try:
                 loop = asyncio.get_event_loop()
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
             
-            # Run the async function
-            if loop.is_running():
-                # If loop is already running (Streamlit Cloud case)
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    future = executor.submit(
-                        asyncio.run, 
-                        self._generate_speech(text, tmp_path)
-                    )
-                    future.result(timeout=30)
-            else:
-                # If no loop is running (local case)
-                loop.run_until_complete(self._generate_speech(text, tmp_path))
+            edge_tts_success = False
+            try:
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run, 
+                            self._generate_speech(text, tmp_path)
+                        )
+                        future.result(timeout=10)  # 10 second timeout
+                else:
+                    loop.run_until_complete(self._generate_speech(text, tmp_path))
+                
+                # Check if file has content
+                if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
+                    edge_tts_success = True
+            except Exception as e:
+                st.warning(f"Edge-TTS failed: {str(e)[:50]}... Trying backup voice engine...")
+            
+            # 🔊 METHOD 2: gTTS Fallback (Always Works on Cloud)
+            if not edge_tts_success:
+                self._generate_speech_gtts(text, tmp_path)
             
             # Read the generated audio file
             with open(tmp_path, "rb") as f:
@@ -149,10 +167,14 @@ class AudioEngine:
             # Cleanup
             os.unlink(tmp_path)
             
+            # Verify we got audio
+            if len(audio_bytes) < 100:
+                raise Exception("Audio file is too small")
+            
             return audio_bytes, (time.time() - start_t)
             
         except Exception as e:
-            st.error(f"🔊 Voice Generation Error: {str(e)}")
+            st.error(f"🔊 Both voice engines failed: {str(e)}")
             return None, 0.0
 
 # ==============================================================================
