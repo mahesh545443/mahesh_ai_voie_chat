@@ -274,7 +274,7 @@ def main():
         layout="centered"
     )
     
-    # Custom Styling (UPDATED FOR EXAMPLE QUESTIONS)
+    # Custom Styling (UPDATED TO INCLUDE INSTRUCTION BOX)
     st.markdown("""
         <style>
         .main-header {
@@ -303,15 +303,27 @@ def main():
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         .example-questions {
-            /* --- UPDATED STYLING FOR BETTER VISIBILITY AND THEME MATCH --- */
-            background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); /* Darker Indigo Gradient */
-            color: white; /* White text for contrast */
+            /* Darker Indigo Gradient */
+            background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); 
+            color: white; 
             padding: 18px;
             border-radius: 10px;
             margin: 20px 0;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
         .example-questions b {
+            color: #ffcc00; /* Highlight important text in yellow */
+        }
+        .instruction-box {
+            /* Matching the Example Questions box style */
+            background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); 
+            color: white; 
+            padding: 18px;
+            border-radius: 10px;
+            margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .instruction-box b {
             color: #ffcc00; /* Highlight important text in yellow */
         }
         </style>
@@ -488,16 +500,19 @@ def main():
         else:
             st.warning("🔊 Voice output failed, but text response is shown above.")
 
-    # Instructions for first use
+    # Instructions for first use (UPDATED TO USE CUSTOM STYLING)
     if not st.session_state.history:
-        st.info("""
+        st.markdown("""
+        <div class='instruction-box'>
         ### 🎯 How to Use:
         1. Click the **microphone button** above
         2. **Ask one of the 5 core questions** (see examples above)
         3. **Listen to Mahesh's response** in natural voice
         
         💡 **Tip:** The bot is designed to answer personality/interview questions as Mahesh would answer them.
-        """)
+        </div>
+        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
+
