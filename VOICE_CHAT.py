@@ -1,18 +1,18 @@
 """
 ================================================================================
 PROJECT: MAHESH AI VOICE AGENT - STAGE 1 SUBMISSION
-VERSION: 9.2 (SECURED & VOICE FIXED)
+VERSION: 9.3 (STREAMLIT CLOUD DEPLOYMENT FIXED)
 AUTHOR: Mahesh
 DESCRIPTION:
     Voice bot that answers personality questions AS MAHESH using:
     - HuggingFace Chat API (Free ChatGPT alternative)
     - Whisper for Speech-to-Text
     - Edge-TTS for Text-to-Speech
-    - Complete persona with 5 core interview answers
     
-    FIXES:
-    1. Secured token usage with st.secrets (Line 93).
-    2. Implemented nest_asyncio to fix silent voice error on Streamlit Cloud (Line 132).
+    DEPLOYMENT FIXES:
+    1. nest_asyncio.apply() moved to global scope (Line 17)
+    2. Added proper asyncio loop handling for Streamlit Cloud
+    3. Fallback to get_event_loop() for better compatibility
 ================================================================================
 """
 
@@ -23,7 +23,10 @@ import asyncio
 import tempfile
 import time
 import os
-import nest_asyncio # <--- 1. VOICE FIX: Import is added
+import nest_asyncio
+
+# 🔊 CRITICAL FIX: Apply nest_asyncio at module level (before any async calls)
+nest_asyncio.apply()
 
 # ==============================================================================
 # MAHESH'S PERSONA DATABASE (THE 5 KEY ANSWERS)
@@ -65,7 +68,7 @@ RESPONSE RULES:
 # ==============================================================================
 
 class Config:
-    # 🚨 SECURITY FIX: Using Streamlit's secrets management
+    # 🚨 SECURITY: Always use Streamlit secrets - NEVER hardcode tokens
     HF_TOKEN = st.secrets["HF_TOKEN"]
     
     MODEL_STT = "openai/whisper-large-v3-turbo"
@@ -75,7 +78,7 @@ class Config:
     APP_ICON = "🎙️"
 
 # ==============================================================================
-# AUDIO ENGINE
+# AUDIO ENGINE (FIXED FOR STREAMLIT CLOUD)
 # ==============================================================================
 
 class AudioEngine:
@@ -101,34 +104,55 @@ class AudioEngine:
 
     async def _generate_speech(self, text, output_file):
         """Generate speech using Edge TTS."""
-        communicate = edge_tts.Communicate(text, Config.VOICE_MALE)
-        await communicate.save(output_file)
+        try:
+            communicate = edge_tts.Communicate(text, Config.VOICE_MALE)
+            await communicate.save(output_file)
+        except Exception as e:
+            raise Exception(f"Edge TTS Error: {str(e)}")
 
     def speak(self, text):
-        """Convert text to speech."""
+        """Convert text to speech - FIXED FOR STREAMLIT CLOUD."""
         if "[ERROR]" in text: 
             return None, 0.0
         
         start_t = time.time()
         
         try:
-            # 🔊 VOICE FIX: Apply nest_asyncio to allow asyncio.run() 
-            # to function correctly within the Streamlit server environment.
-            nest_asyncio.apply() # <--- 2. VOICE FIX: Function call is here
-
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
 
-            asyncio.run(self._generate_speech(text, tmp_path))
+            # 🔊 FIX: Use get_event_loop() instead of asyncio.run() for better compatibility
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
             
+            # Run the async function
+            if loop.is_running():
+                # If loop is already running (Streamlit Cloud case)
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run, 
+                        self._generate_speech(text, tmp_path)
+                    )
+                    future.result(timeout=30)
+            else:
+                # If no loop is running (local case)
+                loop.run_until_complete(self._generate_speech(text, tmp_path))
+            
+            # Read the generated audio file
             with open(tmp_path, "rb") as f:
                 audio_bytes = f.read()
             
+            # Cleanup
             os.unlink(tmp_path)
             
             return audio_bytes, (time.time() - start_t)
             
         except Exception as e:
+            st.error(f"🔊 Voice Generation Error: {str(e)}")
             return None, 0.0
 
 # ==============================================================================
@@ -391,7 +415,10 @@ def main():
             st.write("🗣️ Generating voice...")
             audio_bytes, speak_time = st.session_state.audio.speak(answer)
             
-            status.update(label="✅ Complete!", state="complete")
+            if audio_bytes:
+                status.update(label="✅ Complete!", state="complete")
+            else:
+                status.update(label="⚠️ Voice generation failed", state="error")
 
         # Display Results
         st.markdown(f"""
@@ -421,6 +448,8 @@ def main():
                 col2.metric("Think", f"{think_time:.1f}s")
                 col3.metric("Speak", f"{speak_time:.1f}s")
                 col4.metric("Total", f"{listen_time+think_time+speak_time:.1f}s")
+        else:
+            st.warning("🔊 Voice output failed, but text response is shown above.")
 
     # Instructions for first use
     if not st.session_state.history:
