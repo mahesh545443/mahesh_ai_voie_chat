@@ -9,6 +9,8 @@ DESCRIPTION:
     - Whisper for Speech-to-Text
     - Edge-TTS for Text-to-Speech
     - Complete persona with 5 core interview answers
+    
+    FIX: Added nest_asyncio.apply() to resolve voice issues on Streamlit Cloud.
 ================================================================================
 """
 
@@ -19,6 +21,7 @@ import asyncio
 import tempfile
 import time
 import os
+import nest_asyncio # <--- IMPORT IS HERE
 
 # ==============================================================================
 # MAHESH'S PERSONA DATABASE (THE 5 KEY ANSWERS)
@@ -106,6 +109,10 @@ class AudioEngine:
         start_t = time.time()
         
         try:
+            # FIX: Apply nest_asyncio to safely run an async operation 
+            # inside Streamlit's existing event loop on the server.
+            nest_asyncio.apply() # <--- IMPLEMENTED FIX HERE
+
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
 
@@ -119,6 +126,8 @@ class AudioEngine:
             return audio_bytes, (time.time() - start_t)
             
         except Exception as e:
+            # Optional: Log the error to debug if it still fails
+            # print(f"TTS Error: {e}") 
             return None, 0.0
 
 # ==============================================================================
