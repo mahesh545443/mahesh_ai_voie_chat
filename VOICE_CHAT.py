@@ -500,14 +500,15 @@ def main():
         else:
             st.warning("🔊 Voice output failed, but text response is shown above.")
 
-    # Instructions for first use (UPDATED TO USE CUSTOM STYLING)
+    # Instructions for first use (UPDATED FOR LINE-BY-LINE DISPLAY)
     if not st.session_state.history:
         st.markdown("""
         <div class='instruction-box'>
         ### 🎯 How to Use:
-        1. Click the **microphone button** above
-        2. **Ask one of the 5 core questions** (see examples above)
-        3. **Listen to Mahesh's response** in natural voice
+        
+        * 1. Click the **microphone button** above
+        * 2. **Ask one of the 5 core questions** (see examples above)
+        * 3. **Listen to Mahesh's response** in natural voice
         
         💡 **Tip:** The bot is designed to answer personality/interview questions as Mahesh would answer them.
         </div>
