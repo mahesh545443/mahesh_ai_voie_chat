@@ -1,7 +1,7 @@
 """
 ================================================================================
 PROJECT: MAHESH AI VOICE AGENT - STAGE 1 SUBMISSION
-VERSION: 9.1 (DEPLOYMENT READY)
+VERSION: 9.2 (SECURED & VOICE FIXED)
 AUTHOR: Mahesh
 DESCRIPTION:
     Voice bot that answers personality questions AS MAHESH using:
@@ -11,9 +11,8 @@ DESCRIPTION:
     - Complete persona with 5 core interview answers
     
     FIXES:
-    1. Removed hardcoded HF_TOKEN (security fix).
-    2. Added nest_asyncio import.
-    3. Implemented nest_asyncio.apply() to fix voice issues on Streamlit Cloud.
+    1. Secured token usage with st.secrets (Line 93).
+    2. Implemented nest_asyncio to fix silent voice error on Streamlit Cloud (Line 132).
 ================================================================================
 """
 
@@ -24,7 +23,7 @@ import asyncio
 import tempfile
 import time
 import os
-import nest_asyncio # <--- ADDED IMPORT
+import nest_asyncio # <--- 1. VOICE FIX: Import is added
 
 # ==============================================================================
 # MAHESH'S PERSONA DATABASE (THE 5 KEY ANSWERS)
@@ -66,7 +65,7 @@ RESPONSE RULES:
 # ==============================================================================
 
 class Config:
-    # 🚨 SECURITY FIX: Using st.secrets to retrieve the token securely
+    # 🚨 SECURITY FIX: Using Streamlit's secrets management
     HF_TOKEN = st.secrets["HF_TOKEN"]
     
     MODEL_STT = "openai/whisper-large-v3-turbo"
@@ -113,9 +112,9 @@ class AudioEngine:
         start_t = time.time()
         
         try:
-            # 🔊 VOICE FIX: Apply nest_asyncio to allow asyncio.run() to work
-            # inside Streamlit's event loop on the cloud server.
-            nest_asyncio.apply() # <--- IMPLEMENTED FIX HERE
+            # 🔊 VOICE FIX: Apply nest_asyncio to allow asyncio.run() 
+            # to function correctly within the Streamlit server environment.
+            nest_asyncio.apply() # <--- 2. VOICE FIX: Function call is here
 
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
@@ -436,3 +435,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
