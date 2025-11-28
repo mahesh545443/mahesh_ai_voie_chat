@@ -1,7 +1,5 @@
 streamlit
 huggingface_hub
-tts
-soundfile
-numpy
-
+edge-tts
+nest_asyncio
 
