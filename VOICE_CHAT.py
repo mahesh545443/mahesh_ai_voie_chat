@@ -356,7 +356,7 @@ def main():
         st.markdown("""
         ### 👤 About Mahesh
         - Mechanical Engineer → AI Dev
-        - Self-taught Python & ML
+        - pg in data science and machine learning
         - Builds weekly prototypes
         - Specializes in Agentic AI
         """)
@@ -486,3 +486,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
