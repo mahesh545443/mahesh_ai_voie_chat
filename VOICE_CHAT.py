@@ -131,14 +131,16 @@ class AudioEngine:
                 tmp_path = tmp.name
 
             # 🔊 TRY METHOD 1: Edge-TTS (Best Quality)
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            
             edge_tts_success = False
             try:
+                # Proper asyncio loop handling for Streamlit Cloud
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Handling for Streamlit's possibly running loop
                 if loop.is_running():
                     import concurrent.futures
                     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -153,7 +155,11 @@ class AudioEngine:
                 # Check if file has content
                 if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
                     edge_tts_success = True
+                
             except Exception as e:
+                # Cleanup if Edge-TTS failed but created a file
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
                 st.warning(f"Edge-TTS failed: {str(e)[:50]}... Trying backup voice engine...")
             
             # 🔊 METHOD 2: gTTS Fallback (Always Works on Cloud)
@@ -268,7 +274,7 @@ def main():
         layout="centered"
     )
     
-    # Custom Styling
+    # Custom Styling (UPDATED FOR EXAMPLE QUESTIONS)
     st.markdown("""
         <style>
         .main-header {
@@ -278,26 +284,35 @@ def main():
             color: white;
             border-radius: 10px;
             margin-bottom: 30px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
         .question-box {
-            background: #f0f2f6;
+            background: #f0f2f6; /* Light Grey */
             padding: 15px;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #667eea; /* Blue */
             border-radius: 5px;
             margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         .answer-box {
-            background: #e8f5e9;
+            background: #e8f5e9; /* Light Green */
             padding: 15px;
-            border-left: 4px solid #4caf50;
+            border-left: 4px solid #4caf50; /* Green */
             border-radius: 5px;
             margin: 10px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         .example-questions {
-            background: #fff3e0;
-            padding: 15px;
+            /* --- UPDATED STYLING FOR BETTER VISIBILITY AND THEME MATCH --- */
+            background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); /* Darker Indigo Gradient */
+            color: white; /* White text for contrast */
+            padding: 18px;
             border-radius: 10px;
             margin: 20px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .example-questions b {
+            color: #ffcc00; /* Highlight important text in yellow */
         }
         </style>
     """, unsafe_allow_html=True)
@@ -333,9 +348,9 @@ def main():
         **Task:** Create a voice bot that answers personality questions
         
         **Technologies:**
-        - 🗣️ Voice Input: Whisper STT
-        - 🧠 Brain: HuggingFace Chat API
-        - 🔊 Voice Output: Edge-TTS
+        - 🗣️ Voice Input: **Whisper STT**
+        - 🧠 Brain: **HuggingFace Chat API**
+        - 🔊 Voice Output: **Edge-TTS**
         
         **Status:**
         """)
@@ -486,4 +501,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
