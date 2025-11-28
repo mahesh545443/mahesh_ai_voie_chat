@@ -274,7 +274,7 @@ def main():
         layout="centered"
     )
     
-    # Custom Styling (UPDATED TO INCLUDE INSTRUCTION BOX)
+    # Custom Styling (UPDATED TO USE BLUE GRADIENT FOR ALL BOXES)
     st.markdown("""
         <style>
         .main-header {
@@ -286,24 +286,48 @@ def main():
             margin-bottom: 30px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         }
+        
+        /* Define the common gradient style */
+        .blue-gradient-box {
+            background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%);
+            color: white;
+            padding: 18px;
+            border-radius: 10px;
+            margin: 10px 0;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .blue-gradient-box b {
+            color: #ffcc00; /* Highlight important text in yellow */
+        }
+
+        /* Apply the gradient style to all sections */
         .question-box {
-            background: #f0f2f6; /* Light Grey */
+            /* Now uses the shared gradient look */
+            background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); 
+            color: white;
             padding: 15px;
-            border-left: 4px solid #667eea; /* Blue */
+            border-left: 4px solid #ffcc00; /* Yellow border to distinguish user/agent visually */
             border-radius: 5px;
             margin: 10px 0;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
         .answer-box {
-            background: #e8f5e9; /* Light Green */
+            /* Now uses the shared gradient look */
+            background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); 
+            color: white;
             padding: 15px;
-            border-left: 4px solid #4caf50; /* Green */
+            border-left: 4px solid #32cd32; /* Lime green border to distinguish */
             border-radius: 5px;
             margin: 10px 0;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
+        .example-questions, .instruction-box {
+            /* Apply the shared gradient style */
+            @extend .blue-gradient-box;
+        }
+
+        /* Re-defining instruction and example boxes for clarity, using the base style */
         .example-questions {
-            /* Darker Indigo Gradient */
             background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); 
             color: white; 
             padding: 18px;
@@ -315,7 +339,6 @@ def main():
             color: #ffcc00; /* Highlight important text in yellow */
         }
         .instruction-box {
-            /* Matching the Example Questions box style */
             background: linear-gradient(135deg, #4d57a3 0%, #5b5585 100%); 
             color: white; 
             padding: 18px;
@@ -500,7 +523,7 @@ def main():
         else:
             st.warning("🔊 Voice output failed, but text response is shown above.")
 
-    # Instructions for first use (UPDATED FOR LINE-BY-LINE DISPLAY)
+    # Instructions for first use 
     if not st.session_state.history:
         st.markdown("""
         <div class='instruction-box'>
@@ -516,4 +539,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
