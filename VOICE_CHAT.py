@@ -1,15 +1,14 @@
 """
 ================================================================================
-PROJECT: MAHESH AI VOICE AGENT - STAGE 1 SUBMISSION (PROFESSIONAL VERSION)
-VERSION: 10.0 (FULLY FIXED AND OPTIMIZED)
+PROJECT: MAHESH AI VOICE AGENT - FINAL VERSION (AUDIO FIX)
+VERSION: 11.0 (COMPLETE REWRITE - AUDIO RECOGNITION FIXED)
 AUTHOR: Mahesh
 DESCRIPTION:
-    Professional Voice Bot answering personality questions AS MAHESH
-    - Fixed: Language detection (English only)
-    - Fixed: Clean UI (no debug messages)
-    - Fixed: Proper error handling (silent failures)
-    - Fixed: Better voice quality and language consistency
-    - Technologies: HuggingFace Chat API, Whisper, Edge-TTS, gTTS
+    Professional Voice Bot - FIXED AUDIO RECOGNITION
+    - Better Whisper model selection
+    - Audio validation and retry logic
+    - Fallback mechanisms
+    - Clean UI without errors
 ================================================================================
 """
 
@@ -23,17 +22,15 @@ import time
 import os
 import nest_asyncio
 
-# Critical: Apply nest_asyncio at module level
 nest_asyncio.apply()
 
 # ==============================================================================
-# MAHESH'S PERSONA DATABASE
+# MAHESH'S PERSONA
 # ==============================================================================
 
 MAHESH_PERSONA = """You are MAHESH - a real person answering interview questions about yourself.
 
 YOUR COMPLETE IDENTITY:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 1. LIFE STORY:
 "I started my career as a Mechanical Engineer, working on manufacturing systems and automation. But I realized the future was in software, not just mechanics. So I spent my nights learning Python, building small projects, and slowly transitioning into AI development. Now I work on building intelligent agents and optimizing LLM systems - combining my engineering mindset with cutting-edge AI."
@@ -50,16 +47,12 @@ YOUR COMPLETE IDENTITY:
 5. HOW YOU PUSH YOUR BOUNDARIES AND LIMITS:
 "Every weekend, I build one new prototype or learn one new technology. It could be experimenting with a new AI framework, building a voice agent, or trying out edge computing. This constant experimentation keeps me sharp and pushes me beyond my comfort zone. I also participate in hackathons and contribute to open-source projects."
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 RESPONSE RULES:
-- Answer AS MAHESH (first person: "I", "my", "me")
-- Be confident, authentic, and professional
-- Keep responses concise (2-3 sentences max)
-- Reference specific details from your story
+- Answer AS MAHESH (first person)
+- Be confident, authentic, professional
+- Keep responses 2-3 sentences max
 - Show enthusiasm about AI and engineering
-- Respond ONLY in ENGLISH, never translate
-- If asked in other languages, politely respond in English"""
+- Respond ONLY in ENGLISH"""
 
 # ==============================================================================
 # CONFIGURATION
@@ -67,14 +60,12 @@ RESPONSE RULES:
 
 class Config:
     HF_TOKEN = st.secrets["HF_TOKEN"]
-    MODEL_STT = "openai/whisper-large-v3-turbo"
     VOICE_MALE = "en-US-ChristopherNeural"
     APP_TITLE = "Mahesh AI Voice Agent - Stage 1"
     APP_ICON = "🎙️"
-    LANGUAGE = "en"  # Force English
 
 # ==============================================================================
-# AUDIO ENGINE
+# AUDIO ENGINE - FIXED FOR BETTER RECOGNITION
 # ==============================================================================
 
 class AudioEngine:
@@ -82,49 +73,53 @@ class AudioEngine:
         self.client = InferenceClient(token=Config.HF_TOKEN)
 
     def listen(self, audio_path):
-        """Transcribe audio - ENGLISH ONLY with language detection."""
-        try:
-            start_t = time.time()
-            
-            # Use whisper-large for best accuracy
-            response = self.client.automatic_speech_recognition(
-                audio_path, 
-                model=Config.MODEL_STT,
-                language="en"  # Force English language
-            )
-            
-            text = response.text.strip()
-            
-            # Check if response is empty or suspicious
-            if not text or len(text) < 2:
-                raise Exception("Empty transcription")
-            
-            return text, (time.time() - start_t)
-            
-        except Exception:
-            # Try smaller model as backup
+        """Transcribe audio - MULTIPLE MODELS FOR RELIABILITY."""
+        if not os.path.exists(audio_path):
+            return None, 0.0
+        
+        file_size = os.path.getsize(audio_path)
+        if file_size < 1000:
+            return None, 0.0
+        
+        start_t = time.time()
+        
+        # Try models in order of reliability
+        models = [
+            "openai/whisper-large-v3-turbo",
+            "openai/whisper-large-v3",
+            "openai/whisper-base",
+        ]
+        
+        for model in models:
             try:
                 response = self.client.automatic_speech_recognition(
-                    audio_path, 
-                    model="openai/whisper-small",
+                    audio_path,
+                    model=model,
                     language="en"
                 )
-                return response.text.strip(), 0.0
-            except:
-                return None, 0.0
+                
+                text = response.text.strip() if hasattr(response, 'text') else str(response).strip()
+                
+                if text and len(text) > 2:
+                    return text, (time.time() - start_t)
+                    
+            except Exception as e:
+                continue
+        
+        return None, 0.0
 
     async def _generate_speech(self, text, output_file):
-        """Generate speech using Edge TTS - English male voice."""
+        """Generate speech using Edge TTS."""
         communicate = edge_tts.Communicate(text, Config.VOICE_MALE, rate="+0%")
         await communicate.save(output_file)
     
     def _generate_speech_gtts(self, text, output_file):
-        """Fallback: Generate speech using Google TTS - English."""
+        """Fallback: Generate speech using Google TTS."""
         tts = gTTS(text=text, lang='en', slow=False, tld='com')
         tts.save(output_file)
 
     def speak(self, text):
-        """Convert text to speech - Silent error handling."""
+        """Convert text to speech - DUAL ENGINE."""
         if not text or len(text) < 5:
             return None, 0.0
         
@@ -134,7 +129,7 @@ class AudioEngine:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
 
-            # Try Edge-TTS first
+            # Try Edge-TTS
             try:
                 try:
                     loop = asyncio.get_event_loop()
@@ -192,25 +187,11 @@ class BrainEngine:
     def __init__(self):
         self.client = InferenceClient(token=Config.HF_TOKEN)
         self.model_id = "meta-llama/Llama-3.2-3B-Instruct"
-        
-    def test_connection(self):
-        """Quick connection test."""
-        try:
-            response = self.client.chat_completion(
-                messages=[{"role": "user", "content": "Hi"}],
-                model=self.model_id,
-                max_tokens=5
-            )
-            return response and response.choices
-        except:
-            return False
 
     def think(self, question):
-        """Generate response as Mahesh - with fallback models."""
-        if not self.model_id:
-            self.test_connection()
-            if not self.model_id:
-                return None, 0.0
+        """Generate response as Mahesh."""
+        if not question or len(question) < 2:
+            return None, 0.0
         
         try:
             start_t = time.time()
@@ -229,40 +210,33 @@ class BrainEngine:
             
             answer = response.choices[0].message.content.strip()
             
-            if len(answer) < 10:
-                raise Exception("Response too short")
-            
-            return answer, (time.time() - start_t)
+            if len(answer) > 10:
+                return answer, (time.time() - start_t)
             
         except:
-            # Try backup models silently
-            backups = [
-                "mistralai/Mistral-7B-Instruct-v0.2",
-                "HuggingFaceH4/zephyr-7b-beta",
-                "meta-llama/Llama-3.2-3B-Instruct"
-            ]
-            
-            for backup in backups:
-                try:
-                    response = self.client.chat_completion(
-                        messages=[
-                            {"role": "system", "content": MAHESH_PERSONA},
-                            {"role": "user", "content": question}
-                        ],
-                        model=backup,
-                        max_tokens=150,
-                        temperature=0.7
-                    )
-                    answer = response.choices[0].message.content.strip()
-                    if len(answer) > 10:
-                        return answer, 0.0
-                except:
-                    continue
-            
-            return None, 0.0
+            pass
+        
+        # Try backup model
+        try:
+            response = self.client.chat_completion(
+                messages=[
+                    {"role": "system", "content": MAHESH_PERSONA},
+                    {"role": "user", "content": question}
+                ],
+                model="mistralai/Mistral-7B-Instruct-v0.2",
+                max_tokens=150,
+                temperature=0.7
+            )
+            answer = response.choices[0].message.content.strip()
+            if len(answer) > 10:
+                return answer, 0.0
+        except:
+            pass
+        
+        return None, 0.0
 
 # ==============================================================================
-# STREAMLIT UI - PROFESSIONAL & CLEAN
+# STREAMLIT UI
 # ==============================================================================
 
 def main():
@@ -272,7 +246,7 @@ def main():
         layout="centered"
     )
     
-    # Professional Styling
+    # Styling
     st.markdown("""
         <style>
         .main-header {
@@ -343,12 +317,11 @@ def main():
         </style>
     """, unsafe_allow_html=True)
 
-    # Initialize session state
+    # Initialize
     if "brain" not in st.session_state:
         st.session_state.brain = BrainEngine()
         st.session_state.audio = AudioEngine()
         st.session_state.history = []
-        st.session_state.ready = False
 
     # Header
     st.markdown("""
@@ -366,17 +339,12 @@ def main():
         **Purpose:** Voice-based personality interview
         
         **Technologies:**
-        - 🗣️ Speech Recognition (Whisper)
-        - 🧠 AI Brain (HuggingFace)
-        - 🔊 Voice Output (Edge-TTS)
+        - 🗣️ Whisper (Speech Recognition)
+        - 🧠 HuggingFace LLMs
+        - 🔊 Edge-TTS & gTTS
         
-        **Status:**
+        **Status:** ✅ Ready
         """)
-        
-        if st.session_state.brain.model_id:
-            st.success("✅ Ready")
-        else:
-            st.warning("⚠️ Checking connection...")
         
         st.divider()
         
@@ -388,13 +356,13 @@ def main():
         
         st.markdown("""
         ### 👤 About Mahesh
-        - **Background:** Mechanical Engineer → AI Developer
+        - **Background:** Mechanical Engineer → AI Dev
         - **Expertise:** Agentic AI, LLM Optimization
         - **Hobby:** Weekly Prototyping
-        - **Education:** PG in Data Science & ML
+        - **Education:** PG Data Science & ML
         """)
 
-    # Examples Section
+    # Examples
     with st.expander("📝 Example Questions", expanded=len(st.session_state.history)==0):
         st.markdown("""
         <div class='example-questions'>
@@ -407,13 +375,13 @@ def main():
         5. "How do you push your boundaries?"
         
         <b>Other Questions:</b>
-        - "Why did you transition from mechanical to AI?"
+        - "Why did you transition to AI?"
         - "What projects are you working on?"
         - "What's your learning approach?"
         </div>
         """, unsafe_allow_html=True)
 
-    # Conversation History
+    # History
     if st.session_state.history:
         st.markdown("### 💬 Conversation")
         
@@ -433,24 +401,12 @@ def main():
         
         st.divider()
 
-    # Voice Input Section
+    # Voice Input
     st.markdown("### 🎤 Ask Your Question")
-    
-    col1, col2 = st.columns([0.7, 0.3])
-    
-    with col1:
-        audio_input = st.audio_input("Record your question")
-    
-    with col2:
-        st.write("")  # Spacing
-        st.write("")
-        recording = st.empty()
+    audio_input = st.audio_input("Click to record (speak clearly)")
 
     if audio_input:
-        # Processing state - CLEAN AND MINIMAL
-        processing = st.spinner("Processing your question...")
-        
-        with processing:
+        with st.spinner("Processing your question..."):
             # Step 1: Transcribe
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
                 tmp.write(audio_input.getvalue())
@@ -461,20 +417,20 @@ def main():
             
             # Validation
             if not question:
-                st.error("❌ Could not understand audio. Please speak clearly and try again.")
+                st.error("❌ Could not understand. Please speak CLEARLY and try again.")
                 st.stop()
 
             # Step 2: Generate Answer
             answer, _ = st.session_state.brain.think(question)
             
             if not answer:
-                st.error("❌ Could not generate response. Please try again.")
+                st.error("❌ Could not generate response. Try again.")
                 st.stop()
 
             # Step 3: Generate Voice
             audio_bytes, _ = st.session_state.audio.speak(answer)
 
-        # Display Results - CLEAN AND PROFESSIONAL
+        # Results
         st.markdown(f"""
             <div class='question-box'>
                 <b>🧑 You:</b><br>{question}
@@ -487,33 +443,36 @@ def main():
             </div>
         """, unsafe_allow_html=True)
         
-        # Play Audio
+        # Audio
         if audio_bytes:
             st.audio(audio_bytes, format="audio/mp3", autoplay=True)
             
-            # Save to history
+            # Save
             st.session_state.history.append({"role": "user", "content": question})
             st.session_state.history.append({"role": "mahesh", "content": answer})
             
-            st.success("✅ Conversation saved!")
+            st.success("✅ Saved!")
         else:
-            st.info("ℹ️ Voice output unavailable, but text response is ready above.")
+            st.info("ℹ️ Voice unavailable, but text ready above.")
 
-    # First time user guidance
+    # First time
     if not st.session_state.history:
         st.markdown("""
         <div class='instruction-box'>
         ### 🎯 How to Use:
         
-        **1.** Click the microphone button above  
-        **2.** Speak your question clearly (English recommended)  
+        **1.** Click the microphone  
+        **2.** Speak your question CLEARLY (at normal volume)  
         **3.** Wait for Mahesh's response  
-        **4.** Listen to his answer in natural voice  
+        **4.** Listen to his answer  
         
-        **💡 Tip:** The bot works best with personality/interview questions.
+        **💡 Tips:**
+        - Speak at NORMAL volume
+        - Don't whisper
+        - Ask personality/interview questions
+        - Wait for processing to complete
         </div>
         """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-
