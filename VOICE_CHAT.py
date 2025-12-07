@@ -59,7 +59,7 @@ RESPONSE STYLE:
 class Config:
     HF_TOKEN = st.secrets["HF_TOKEN"]
     MODEL_STT = "openai/whisper-large-v3-turbo"
-    VOICE_MALE = "en-US-ChristopherNeural"
+    VOICE_MALE = "en-US-GuyNeural"  # Professional male voice
     APP_TITLE = "Mahesh AI Voice Agent"
     APP_ICON = "🎙️"
 
@@ -72,22 +72,32 @@ class AudioEngine:
         self.client = InferenceClient(token=Config.HF_TOKEN)
 
     def listen(self, audio_path):
-        """Enhanced speech recognition with better accuracy"""
+        """Enhanced speech recognition with noise filtering"""
         try:
             start_t = time.time()
+            # Use Whisper with better parameters for noisy environments
             response = self.client.automatic_speech_recognition(
                 audio_path, 
                 model=Config.MODEL_STT
             )
             transcription = response.text.strip()
+            
+            # Filter out very short or empty responses
+            if len(transcription) < 3:
+                return None, 0.0
+                
             return transcription, (time.time() - start_t)
         except Exception:
             try:
+                # Fallback to smaller model
                 response = self.client.automatic_speech_recognition(
                     audio_path, 
-                    model="openai/whisper-small"
+                    model="openai/whisper-medium"
                 )
-                return response.text.strip(), 0.0
+                transcription = response.text.strip()
+                if len(transcription) < 3:
+                    return None, 0.0
+                return transcription, 0.0
             except Exception as e:
                 return None, 0.0
 
@@ -473,40 +483,89 @@ def main():
     # Header
     st.markdown("""
         <div class='pro-header'>
-            <h1>🎙️ Mahesh AI Voice Agent</h1>
-            <p>Professional Interview Bot | Stage 1 Submission</p>
+            <h1>🎙️ Mahesh - AI Engineer</h1>
+            <p>Voice-Enabled Interview Assistant | Professional Q&A Bot</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Show example questions if first time
-    if len(st.session_state.conversation) == 0:
-        st.markdown("""
-        <div class='info-card'>
-            <h3>📝 Ask Me About:</h3>
-            <ul>
-                <li><strong>My Life Story</strong> - Journey from Mechanical Engineering to AI Development</li>
-                <li><strong>My #1 Superpower</strong> - Systematic problem-solving approach</li>
-                <li><strong>Top 3 Growth Areas</strong> - Agentic AI, Cloud Architecture, Communication</li>
-                <li><strong>Misconceptions</strong> - What coworkers misunderstand about me</li>
-                <li><strong>Pushing Boundaries</strong> - How I challenge myself weekly</li>
-            </ul>
-            <p style='margin-top: 18px; font-size: 1rem; opacity: 0.85;'>
-                💡 <strong>Tip:</strong> Click the microphone below and ask any question naturally in your voice
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+    # Sidebar with Clear History and Info
+    with st.sidebar:
+        st.markdown("### 🎯 Quick Actions")
         
+        if st.button("🗑️ Clear Conversation History", use_container_width=True):
+            st.session_state.conversation = []
+            st.rerun()
+        
+        st.markdown("---")
+        
+        st.markdown("### 👤 About")
         st.markdown("""
-        <div class='info-card'>
-            <h3>ℹ️ How It Works</h3>
-            <p><strong>Step 1:</strong> Click the microphone and record your question</p>
-            <p><strong>Step 2:</strong> AI transcribes your voice and generates a response</p>
-            <p><strong>Step 3:</strong> Listen to Mahesh's voice answer</p>
-            <p style='margin-top: 15px; font-size: 0.95rem; opacity: 0.75;'>
-                🔧 <strong>Technology Stack:</strong> Whisper STT • HuggingFace LLM • Edge TTS
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        **Mahesh** - AI Engineer
+        
+        🔹 Mechanical Engineer → AI Developer  
+        🔹 PG in Data Science & ML  
+        🔹 Specializes in Agentic AI  
+        🔹 Builds weekly prototypes  
+        """)
+        
+        st.markdown("---")
+        
+        st.markdown("### 🛠️ Tech Stack")
+        st.markdown("""
+        - **Speech-to-Text**: Whisper Large V3
+        - **AI Brain**: HuggingFace LLM
+        - **Text-to-Speech**: Edge TTS (Male Voice)
+        """)
+
+    # Show example questions if first time (in expandable section)
+    if len(st.session_state.conversation) == 0:
+        with st.expander("📝 **Ask Me About** (Click to expand)", expanded=False):
+            st.markdown("""
+            **Sample Questions You Can Ask:**
+            
+            - **My Life Story** - Journey from Mechanical Engineering to AI Development
+            - **My #1 Superpower** - Systematic problem-solving approach
+            - **Top 3 Growth Areas** - Agentic AI, Cloud Architecture, Communication
+            - **Misconceptions** - What coworkers misunderstand about me
+            - **Pushing Boundaries** - How I challenge myself weekly
+            
+            💡 **Tip**: Speak clearly in a quiet environment for best results
+            """)
+        
+        with st.expander("ℹ️ **How It Works** (Click to expand)", expanded=False):
+            st.markdown("""
+            **Step 1:** Click the microphone and record your question  
+            **Step 2:** AI transcribes your voice and generates response  
+            **Step 3:** Listen to Mahesh's natural voice answer  
+            
+            🔧 **Technology**: Whisper STT • HuggingFace LLM • Edge TTS
+            
+            ⚠️ **For Best Results:**
+            - Speak in a quiet environment
+            - Speak clearly and at normal pace
+            - Ask one question at a time
+            """)
+    else:
+        # Show dropdowns even after conversation starts
+        with st.expander("📝 **Ask Me About**", expanded=False):
+            st.markdown("""
+            **Sample Questions:**
+            
+            - My Life Story - Journey from Mechanical Engineering to AI Development
+            - My #1 Superpower - Systematic problem-solving approach
+            - Top 3 Growth Areas - Agentic AI, Cloud Architecture, Communication
+            - Misconceptions - What coworkers misunderstand about me
+            - Pushing Boundaries - How I challenge myself weekly
+            """)
+        
+        with st.expander("ℹ️ **How It Works**", expanded=False):
+            st.markdown("""
+            **Step 1:** Record your question  
+            **Step 2:** AI processes and responds  
+            **Step 3:** Listen to Mahesh's voice  
+            
+            🔧 **Tech**: Whisper STT • HuggingFace LLM • Edge TTS
+            """)
 
     # Conversation History
     if st.session_state.conversation:
@@ -555,7 +614,12 @@ def main():
         if not question:
             st.markdown("""
                 <div class='error-box'>
-                    ❌ <strong>Could not understand audio.</strong> Please try recording again with clear speech.
+                    ❌ <strong>Could not understand audio.</strong><br>
+                    💡 <strong>Tips for better recognition:</strong><br>
+                    • Find a quiet place with minimal background noise<br>
+                    • Speak clearly at a normal pace<br>
+                    • Hold the device closer to your mouth<br>
+                    • Avoid recording in echoey rooms
                 </div>
             """, unsafe_allow_html=True)
             st.stop()
@@ -628,3 +692,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+           
