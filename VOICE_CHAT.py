@@ -1,129 +1,165 @@
 """
 ================================================================================
-PROJECT: MAHESH AI AGENT - FINAL SUBMISSION
-VERSION: 10.0 (STABILITY & UI OVERHAUL)
-AUTHOR: Mahesh
+PROJECT: MAHESH AI VOICE AGENT - OPTIMIZED STAGE 1 SUBMISSION
+VERSION: 9.5 (Cleaned, Faster, Professional UI)
+AUTHOR: Mahesh & Gemini
 DESCRIPTION:
-    Professional AI Agent representing Mahesh for recruitment.
-    Features:
-    - Dual Input: Voice (Whisper) + Text (Chat Interface)
-    - Architecture: HuggingFace (LLM) + gTTS (Stable Audio)
-    - UI: Modern Native Streamlit Chat Interface
+    Voice bot that answers personality questions AS MAHESH using:
+    - HuggingFace Chat API
+    - Whisper for Speech-to-Text
+    - Edge-TTS for high-quality Text-to-Speech (with gTTS fallback)
+    - NEW: Streamlit Native UI (st.chat_message) for better mobile experience
+    - NEW: Added Text Input (st.chat_input)
 ================================================================================
 """
 
 import streamlit as st
 from huggingface_hub import InferenceClient
+import edge_tts
 from gtts import gTTS
+import asyncio
 import tempfile
 import time
 import os
+import nest_asyncio
+
+# 🔊 CRITICAL FIX: Apply nest_asyncio at module level for Edge-TTS
+nest_asyncio.apply()
 
 # ==============================================================================
-# 🧠 MAHESH'S PROFESSIONAL BRAIN (STRICT PROMPT)
+# MAHESH'S PERSONA DATABASE (The LLM's System Prompt)
 # ==============================================================================
 
-MAHESH_PERSONA = """
-You are MAHESH, an AI Engineer candidate. You are answering interview questions.
+MAHESH_PERSONA = """You are MAHESH - a real person answering interview questions about yourself.
 
-### YOUR CORE IDENTITY
-- **Role:** AI Engineer / Data Scientist.
-- **Background:** Mechanical Engineer turned Software/AI Developer.
-- **Key Trait:** Systematic problem solver (Engineering mindset applied to Code).
+YOUR COMPLETE IDENTITY:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### STRICT DATA BANK (DO NOT HALLUCINATE)
-1. **Life Story:** Started in Mechanical Engineering (automation/manufacturing). Realized software was the future. Spent nights learning Python/AI. Now building intelligent agents and optimizing LLMs.
-2. **Superpower:** "Systematic Debugging." You break down software architecture like a mechanical machine to find root causes instantly.
-3. **Growth Areas:** 1) Agentic AI (Autonomous systems), 2) Distributed Cloud Architecture, 3) Technical Communication for stakeholders.
-4. **Misconceptions:** People think mechanical engineers can't code. You prove them wrong with clean, efficient, rigorous code.
-5. **Limits:** You push limits by building one new prototype every weekend (e.g., Voice Agents, Edge AI).
+1. LIFE STORY (in a few sentences):
+"I started my career as a Mechanical Engineer, working on manufacturing systems and automation. But I realized the future was in software, not just mechanics. So I spent my nights learning Python, building small projects, and slowly transitioning into AI development. Now I work on building intelligent agents and optimizing LLM systems - combining my engineering mindset with cutting-edge AI."
 
-### RESPONSE GUIDELINES
-1. **Tone:** Professional, Confident, Humble, Energetic.
-2. **Length:** SHORT and PUNCHY. Max 2-3 sentences per response. No long paragraphs.
-3. **Style:** Speak in first person ("I", "Me").
-4. **Consistency:** If asked about the topics in the DATA BANK, use the provided facts EXACTLY.
-"""
+2. YOUR #1 SUPERPOWER:
+"My superpower is systematic problem-solving from my mechanical engineering background. I break down complex software problems like I would a mechanical system - identifying components, understanding dependencies, and optimizing the whole system. This makes me great at debugging, architecture design, and finding efficient solutions."
+
+3. TOP 3 AREAS YOU'D LIKE TO GROW IN:
+"First, I want to master Agentic AI - building autonomous systems that can plan and execute tasks. Second, I'm working on distributed systems and cloud architecture to scale AI applications. Third, I want to get better at communicating technical concepts to non-technical stakeholders - turning complexity into clarity."
+
+4. MISCONCEPTION COWORKERS HAVE ABOUT YOU:
+"People think that because I came from mechanical engineering, I might not be as strong in pure software skills. But I actually love proving them wrong. My code is clean, my algorithms are efficient, and I approach software with the same rigor I applied to engineering systems. The transition made me a better developer, not a weaker one."
+
+5. HOW YOU PUSH YOUR BOUNDARIES AND LIMITS:
+"Every weekend, I build one new prototype or learn one new technology. It could be experimenting with a new AI framework, building a voice agent, or trying out edge computing. This constant experimentation keeps me sharp and pushes me beyond my comfort zone. I also participate in hackathons and contribute to open-source projects."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+RESPONSE RULES:
+- Answer AS MAHESH (first person: "I", "my", "me")
+- Be confident, authentic, and professional
+- Keep responses concise (2-4 sentences)
+- Reference specific details from your story above
+- Show personality - you're enthusiastic about AI and engineering
+- If asked variations of the 5 questions, use the exact answers above
+- For other questions, stay consistent with this persona"""
 
 # ==============================================================================
-# ⚙️ CONFIGURATION & SETUP
+# CONFIGURATION
 # ==============================================================================
 
 class Config:
-    # 🚨 Ensure 'HF_TOKEN' is in your Streamlit Secrets!
-    try:
-        HF_TOKEN = st.secrets["HF_TOKEN"]
-    except:
-        st.error("🚨 HF_TOKEN not found in secrets. Please add it to deploy.")
-        st.stop()
+    HF_TOKEN = st.secrets["HF_TOKEN"]
+    # Single, reliable models for stability
+    MODEL_STT = "openai/whisper-large-v3-turbo" 
+    MODEL_LLM = "mistralai/Mistral-7B-Instruct-v0.2" # Excellent and fast
+    VOICE_MALE = "en-US-ChristopherNeural"
     
-    # Using 'base' model for speed. 'Large' is too slow for real-time conversation.
-    MODEL_STT = "openai/whisper-base.en" 
-    APP_TITLE = "Mahesh | AI Candidate Agent"
-    APP_ICON = "🤖"
+    APP_TITLE = "Mahesh AI Voice Agent"
+    APP_ICON = "🎙️"
 
 # ==============================================================================
-# 🔊 AUDIO ENGINE (OPTIMIZED FOR STABILITY)
+# AUDIO ENGINE (Edge-TTS with gTTS fallback)
 # ==============================================================================
 
 class AudioEngine:
     def __init__(self):
         self.client = InferenceClient(token=Config.HF_TOKEN)
 
-    def listen(self, audio_path):
-        """Transcribe audio using HuggingFace Whisper (Fast)."""
+    @st.cache_data(show_spinner=False, max_entries=100)
+    def listen(_self, audio_bytes):
+        """Transcribe audio using Whisper."""
         try:
             start_t = time.time()
-            # automatic_speech_recognition is the standard HF pipeline
-            response = self.client.automatic_speech_recognition(
-                audio_path, 
-                model=Config.MODEL_STT
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+                tmp.write(audio_bytes.getvalue())
+                tmp_path = tmp.name
+            
+            response = _self.client.automatic_speech_recognition(
+                tmp_path, model=Config.MODEL_STT
             )
+            os.unlink(tmp_path)
             return response.text, (time.time() - start_t)
         except Exception as e:
-            return f"[ERROR] {str(e)}", 0.0
+            return f"[ERROR] STT Failed: {str(e)[:50]}...", 0.0
+
+    async def _generate_speech_edge(self, text, output_file):
+        """Generate speech using Edge TTS (Best Quality)."""
+        communicate = edge_tts.Communicate(text, Config.VOICE_MALE)
+        await communicate.save(output_file)
+    
+    def _generate_speech_gtts(self, text, output_file):
+        """Fallback: Generate speech using Google TTS (Always Works)."""
+        tts = gTTS(text=text, lang='en', slow=False, tld='com')
+        tts.save(output_file)
 
     def speak(self, text):
-        """
-        Convert text to speech using gTTS.
-        Why gTTS? It is synchronous and thread-safe. 
-        It effectively eliminates Streamlit Cloud asyncio crashes.
-        """
+        """Convert text to speech - Tries Edge-TTS, falls back to gTTS."""
+        if "[ERROR]" in text: 
+            return None, 0.0
+        
+        start_t = time.time()
+        audio_bytes = None
+        
         try:
-            start_t = time.time()
-            
-            # Create a temporary file
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
+            
+            # 🔊 TRY METHOD 1: Edge-TTS (Best Quality)
+            try:
+                # Use a cleaner way to run the async Edge-TTS function
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(self._generate_speech_edge(text, tmp_path))
+                
+                if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
+                    with open(tmp_path, "rb") as f:
+                        audio_bytes = f.read()
+            except Exception:
+                # 🔊 METHOD 2: gTTS Fallback
+                self._generate_speech_gtts(text, tmp_path)
+                with open(tmp_path, "rb") as f:
+                    audio_bytes = f.read()
 
-            # Generate Audio
-            tts = gTTS(text=text, lang='en', tld='com', slow=False)
-            tts.save(tmp_path)
-            
-            # Read back bytes
-            with open(tmp_path, "rb") as f:
-                audio_bytes = f.read()
-            
-            # Cleanup
-            os.unlink(tmp_path)
-            
-            return audio_bytes, (time.time() - start_t)
+            if audio_bytes and len(audio_bytes) > 100:
+                return audio_bytes, (time.time() - start_t)
+            else:
+                raise Exception("Generated audio file is too small.")
             
         except Exception as e:
-            st.error(f"Audio Generation Error: {e}")
+            st.warning(f"🔊 Both voice engines failed. Using text only.")
             return None, 0.0
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
 # ==============================================================================
-# 🧠 BRAIN ENGINE (LLM LOGIC)
+# BRAIN ENGINE (HUGGINGFACE CHAT API)
 # ==============================================================================
 
 class BrainEngine:
     def __init__(self):
         self.client = InferenceClient(token=Config.HF_TOKEN)
-        self.model_id = "mistralai/Mistral-7B-Instruct-v0.3" # Reliable, fast, smart
 
-    def think(self, question):
-        """Generate response as Mahesh."""
+    @st.cache_data(show_spinner=False, max_entries=100)
+    def think(_self, question):
+        """Generate response as Mahesh using the specified persona."""
         try:
             start_t = time.time()
             
@@ -132,22 +168,66 @@ class BrainEngine:
                 {"role": "user", "content": question}
             ]
             
-            response = self.client.chat_completion(
+            response = _self.client.chat_completion(
                 messages=messages,
-                model=self.model_id,
-                max_tokens=150, # Limit tokens to force brevity
-                temperature=0.6 # Balance between creativity and strictness
+                model=Config.MODEL_LLM,
+                max_tokens=200,
+                temperature=0.7
             )
             
             answer = response.choices[0].message.content.strip()
             return answer, (time.time() - start_t)
             
         except Exception as e:
-            return "I am currently experiencing high traffic. Could you ask that again?", 0.0
+            st.error(f"LLM Error: Could not connect to {Config.MODEL_LLM}. {str(e)[:50]}")
+            return "I'm having trouble connecting to the network right now. Please try again.", 0.0
 
 # ==============================================================================
-# 🖥️ STREAMLIT UI (MODERN CHAT STYLE)
+# STREAMLIT UI & EXECUTION FLOW
 # ==============================================================================
+
+def execute_chat_flow(user_input, is_voice=False):
+    """Handles the full flow: Think -> Speak -> Display."""
+    
+    # 1. Generate Answer
+    with st.spinner("🧠 Mahesh is thinking..."):
+        answer, think_time = st.session_state.brain.think(user_input)
+    
+    # 2. Generate Voice
+    with st.spinner("🔊 Generating voice..."):
+        audio_bytes, speak_time = st.session_state.audio.speak(answer)
+    
+    # 3. Save History
+    st.session_state.history.append({"role": "user", "content": user_input})
+    st.session_state.history.append({"role": "mahesh", "content": answer, "audio": audio_bytes})
+    
+    # 4. Rerun to display new history
+    st.rerun()
+
+def process_voice_input(audio_input):
+    """Handles the Voice-to-Text flow."""
+    with st.spinner("👂 Listening and Transcribing..."):
+        question, listen_time = st.session_state.audio.listen(audio_input)
+    
+    if "[ERROR]" in question:
+        st.error(f"Transcription failed: {question}")
+        return
+    
+    # Pass the transcribed question to the main chat flow
+    execute_chat_flow(question, is_voice=True)
+
+def display_chat_history():
+    """Renders all messages using native st.chat_message for cleaner UI."""
+    for msg in st.session_state.history:
+        if msg["role"] == "user":
+            with st.chat_message("user", avatar="🧑"):
+                st.write(msg["content"])
+        else:
+            with st.chat_message("assistant", avatar="🎙️"):
+                st.write(msg["content"])
+                if msg.get("audio"):
+                    # Use a clean container for the audio player
+                    st.audio(msg["audio"], format="audio/mp3", autoplay=True)
 
 def main():
     st.set_page_config(
@@ -155,100 +235,72 @@ def main():
         page_icon=Config.APP_ICON,
         layout="centered"
     )
+    
+    st.title(f"{Config.APP_ICON} {Config.APP_TITLE}")
+    st.caption("Stage 1 Interview Submission | Voice-Enabled Q&A Bot")
+    st.divider()
 
-    # Initialize Session State
+    # Initialize Engines
     if "brain" not in st.session_state:
-        st.session_state.brain = BrainEngine()
-        st.session_state.audio = AudioEngine()
-        st.session_state.messages = [
-            {"role": "assistant", "content": "Hi, I'm Mahesh's AI Agent. You can ask me about my engineering background, my coding skills, or my life story. How can I help?"}
-        ]
+        with st.spinner("🚀 Initializing Mahesh's Brain and Audio Engines..."):
+            st.session_state.brain = BrainEngine()
+            st.session_state.audio = AudioEngine()
+            st.session_state.history = []
+            st.success(f"✅ System Ready using {Config.MODEL_LLM.split('/')[-1]}!")
+            time.sleep(0.5)
+            st.rerun() # Clear spinner cleanly
 
-    # --- HEADER ---
-    st.title("🤖 Mahesh AI Agent")
-    st.caption("Powered by Mistral-7B & Whisper | Voice & Text Enabled")
+    # --- UI LAYOUT ---
 
-    # --- SIDEBAR INFO ---
-    with st.sidebar:
-        st.image("https://api.dicebear.com/9.x/avataaars/svg?seed=Mahesh&clothing=blazerAndShirt", width=150)
-        st.markdown("### 👨‍💻 Candidate Profile")
-        st.info(
-            """
-            **Name:** Mahesh
-            **Role:** AI Engineer
-            **Specialty:** Agentic AI & Deployment
-            **Status:** Ready to Join
-            """
+    # 1. Conversation History Display
+    if st.session_state.history:
+        display_chat_history()
+    else:
+        # Initial instructions only shown on first run
+        st.info("""
+        **Welcome!** Ask Mahesh a question using **voice (microphone)** or **text (chatbox)** below.
+        
+        🗣️ **Try asking:** "What's your number one superpower?"
+        """)
+    
+    st.divider()
+
+    # 2. Input Method Container
+    col_text, col_voice = st.columns([3, 1])
+
+    # A. Text Input (st.chat_input)
+    with col_text:
+        text_input = st.chat_input("Type your question here...")
+        if text_input:
+            execute_chat_flow(text_input)
+
+    # B. Voice Input (st.audio_input)
+    with col_voice:
+        # Use a button to record, then handle the resulting audio file
+        audio_input = st.audio_recorder(
+            label="Record Voice Question", 
+            icon="🎙️",
+            text="Record",
+            recording_color="#ea7466",
+            icon_size="1x"
         )
-        if st.button("🔄 Reset Conversation"):
-            st.session_state.messages = [{"role": "assistant", "content": "Hi, I'm Mahesh's AI Agent. Ready for your questions."}]
+        if audio_input:
+            process_voice_input(audio_input)
+
+    # 3. Sidebar
+    with st.sidebar:
+        st.title("⚙️ Debug & Controls")
+        
+        st.markdown(f"**LLM Model:** `{Config.MODEL_LLM.split('/')[-1]}`")
+        st.markdown(f"**TTS Voice:** `{Config.VOICE_MALE}`")
+        
+        st.divider()
+        
+        if st.button("🔄 Clear Conversation"):
+            st.session_state.history = []
+            st.toast("Conversation cleared!")
             st.rerun()
-
-    # --- CHAT HISTORY DISPLAY ---
-    # This renders the chat history using native Streamlit chat bubbles
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.write(msg["content"])
-
-    # --- INPUT HANDLING ---
-    
-    # 1. Voice Input (Top)
-    audio_val = st.audio_input("🎤 Record a question (or type below)")
-    
-    # 2. Text Input (Bottom)
-    text_val = st.chat_input("💬 Type your question here...")
-
-    # Logic to determine which input to use
-    user_input = None
-    input_type = None
-
-    if audio_val:
-        with st.spinner("🎧 Transcribing audio..."):
-            # Write temp file for Whisper
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                tmp.write(audio_val.getvalue())
-                tmp_path = tmp.name
-            
-            transcription, t_time = st.session_state.audio.listen(tmp_path)
-            os.unlink(tmp_path)
-            
-            # Only process if we haven't processed this specific audio buffer yet
-            # (Simple check to prevent re-running on redraw)
-            if transcription and "[ERROR]" not in transcription:
-                user_input = transcription
-                input_type = "voice"
-
-    if text_val:
-        user_input = text_val
-        input_type = "text"
-
-    # --- PROCESSING LOOP ---
-    if user_input:
-        # 1. Display User Message immediately
-        st.session_state.messages.append({"role": "user", "content": user_input})
-        with st.chat_message("user"):
-            st.write(user_input)
-
-        # 2. Generate AI Response
-        with st.chat_message("assistant"):
-            with st.spinner("🧠 Thinking..."):
-                answer, t_time = st.session_state.brain.think(user_input)
-                
-                # Show text response
-                st.write(answer)
-                
-                # Generate Audio response
-                audio_bytes, s_time = st.session_state.audio.speak(answer)
-                if audio_bytes:
-                    st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-                
-                # Append to history
-                st.session_state.messages.append({"role": "assistant", "content": answer})
-
-        # Force a rerun to clear inputs if needed, though chat_input clears auto
-        if input_type == "voice":
-            # Optional: Add a 'processed' state to avoid loop
-            pass
 
 if __name__ == "__main__":
     main()
+
