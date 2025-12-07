@@ -191,32 +191,19 @@ class AudioEngine:
 class BrainEngine:
     def __init__(self):
         self.client = InferenceClient(token=Config.HF_TOKEN)
-        self.model_id = None
-        self.test_connection()
+        self.model_id = "meta-llama/Llama-3.2-3B-Instruct"
         
     def test_connection(self):
-        """Test which chat model works."""
-        models = [
-            "meta-llama/Llama-3.2-3B-Instruct",
-            "mistralai/Mistral-7B-Instruct-v0.2",
-            "HuggingFaceH4/zephyr-7b-beta",
-            "microsoft/Phi-3.5-mini-instruct"
-        ]
-        
-        for model in models:
-            try:
-                response = self.client.chat_completion(
-                    messages=[{"role": "user", "content": "Hi"}],
-                    model=model,
-                    max_tokens=10
-                )
-                if response and response.choices:
-                    self.model_id = model
-                    return True
-            except:
-                continue
-        
-        return False
+        """Quick connection test."""
+        try:
+            response = self.client.chat_completion(
+                messages=[{"role": "user", "content": "Hi"}],
+                model=self.model_id,
+                max_tokens=5
+            )
+            return response and response.choices
+        except:
+            return False
 
     def think(self, question):
         """Generate response as Mahesh - with fallback models."""
@@ -361,6 +348,7 @@ def main():
         st.session_state.brain = BrainEngine()
         st.session_state.audio = AudioEngine()
         st.session_state.history = []
+        st.session_state.ready = False
 
     # Header
     st.markdown("""
@@ -388,7 +376,7 @@ def main():
         if st.session_state.brain.model_id:
             st.success("✅ Ready")
         else:
-            st.info("⏳ Connecting...")
+            st.warning("⚠️ Checking connection...")
         
         st.divider()
         
