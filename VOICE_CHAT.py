@@ -223,7 +223,7 @@ class BrainEngine:
             return None, 0.0
 
 # ==============================================================================
-# PROFESSIONAL STREAMLIT UI
+# PROFESSIONAL STREAMLIT UI - DARK THEME
 # ==============================================================================
 
 def main():
@@ -234,121 +234,162 @@ def main():
         initial_sidebar_state="collapsed"
     )
     
-    # Professional CSS Styling
+    # DARK THEME PROFESSIONAL CSS
     st.markdown("""
         <style>
-        /* Main Container */
-        .main {
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            padding: 0;
+        /* Force Dark Background for Everything */
+        .main, .stApp, [data-testid="stAppViewContainer"], 
+        [data-testid="stHeader"], section[data-testid="stSidebar"] {
+            background-color: #0a0e27 !important;
+            color: #e0e0e0 !important;
         }
         
-        /* Header */
+        /* Header Section */
         .pro-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px 30px;
-            border-radius: 15px;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+            color: #ffffff;
+            padding: 35px 25px;
+            border-radius: 16px;
             text-align: center;
             margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
         }
         
         .pro-header h1 {
             margin: 0;
-            font-size: 2.2rem;
-            font-weight: 700;
+            font-size: 2.3rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
         
         .pro-header p {
-            margin: 10px 0 0 0;
+            margin: 12px 0 0 0;
             font-size: 1.1rem;
+            color: #f0f0f0;
             opacity: 0.95;
         }
         
-        /* Message Bubbles */
+        /* User Message Bubble */
         .user-message {
-            background: linear-gradient(135deg, #4e54c8 0%, #8f94fb 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 20px 20px 5px 20px;
-            margin: 15px 0;
-            box-shadow: 0 5px 15px rgba(78, 84, 200, 0.3);
-            animation: slideInRight 0.3s ease-out;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: #ffffff;
+            padding: 20px 24px;
+            border-radius: 18px 18px 4px 18px;
+            margin: 20px 0;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+            animation: slideInRight 0.4s ease-out;
+            border: 1px solid rgba(59, 130, 246, 0.3);
         }
         
+        /* Assistant Message Bubble */
         .assistant-message {
-            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 20px 20px 20px 5px;
-            margin: 15px 0;
-            box-shadow: 0 5px 15px rgba(17, 153, 142, 0.3);
-            animation: slideInLeft 0.3s ease-out;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            padding: 20px 24px;
+            border-radius: 18px 18px 18px 4px;
+            margin: 20px 0;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+            animation: slideInLeft 0.4s ease-out;
+            border: 1px solid rgba(16, 185, 129, 0.3);
         }
         
         .message-label {
             font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
             opacity: 0.9;
+            color: #ffffff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .message-content {
-            font-size: 1.05rem;
-            line-height: 1.6;
+            font-size: 1.08rem;
+            line-height: 1.7;
+            color: #ffffff;
         }
         
-        /* Info Boxes */
+        /* Info Card - Dark Theme */
         .info-card {
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 25px;
-            margin: 20px 0;
-            color: white;
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            border: 1px solid #475569;
+            border-radius: 16px;
+            padding: 28px;
+            margin: 25px 0;
+            color: #e2e8f0;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         }
         
         .info-card h3 {
-            color: #8f94fb;
+            color: #a78bfa;
             margin-top: 0;
+            font-size: 1.4rem;
+            font-weight: 700;
         }
         
         .info-card ul {
-            margin: 10px 0;
-            padding-left: 20px;
+            margin: 15px 0;
+            padding-left: 24px;
         }
         
         .info-card li {
-            margin: 8px 0;
-            line-height: 1.5;
+            margin: 10px 0;
+            line-height: 1.6;
+            color: #cbd5e1;
         }
         
-        /* Status Messages */
+        .info-card li strong {
+            color: #f0abfc;
+        }
+        
+        .info-card p {
+            color: #cbd5e1;
+        }
+        
+        /* Status Box - Success */
         .status-box {
-            background: rgba(17, 153, 142, 0.2);
-            border-left: 4px solid #38ef7d;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            color: white;
+            background: linear-gradient(135deg, #065f46 0%, #047857 100%);
+            border-left: 5px solid #10b981;
+            padding: 18px 20px;
+            border-radius: 10px;
+            margin: 18px 0;
+            color: #ffffff;
+            box-shadow: 0 3px 12px rgba(16, 185, 129, 0.3);
         }
         
+        .status-box strong {
+            color: #d1fae5;
+        }
+        
+        /* Error Box */
         .error-box {
-            background: rgba(231, 76, 60, 0.2);
-            border-left: 4px solid #e74c3c;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-            color: white;
+            background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%);
+            border-left: 5px solid #ef4444;
+            padding: 18px 20px;
+            border-radius: 10px;
+            margin: 18px 0;
+            color: #ffffff;
+            box-shadow: 0 3px 12px rgba(239, 68, 68, 0.3);
+        }
+        
+        .error-box strong {
+            color: #fecaca;
+        }
+        
+        /* Section Title */
+        .section-title {
+            color: #c4b5fd;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 30px 0 15px 0;
         }
         
         /* Animations */
         @keyframes slideInRight {
             from {
                 opacity: 0;
-                transform: translateX(30px);
+                transform: translateX(40px);
             }
             to {
                 opacity: 1;
@@ -359,7 +400,7 @@ def main():
         @keyframes slideInLeft {
             from {
                 opacity: 0;
-                transform: translateX(-30px);
+                transform: translateX(-40px);
             }
             to {
                 opacity: 1;
@@ -367,16 +408,39 @@ def main():
             }
         }
         
+        /* Streamlit Component Styling */
+        .stAudioInput, .stButton button {
+            border-radius: 12px !important;
+        }
+        
+        .stButton button {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+            font-weight: 600;
+            border: none;
+            padding: 12px 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .stButton button:hover {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+            transform: translateY(-2px);
+        }
+        
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .pro-header h1 {
-                font-size: 1.8rem;
+                font-size: 1.9rem;
             }
             .pro-header p {
                 font-size: 1rem;
             }
             .user-message, .assistant-message {
-                padding: 15px;
+                padding: 16px 18px;
+            }
+            .info-card {
+                padding: 20px;
             }
         }
         
@@ -384,6 +448,19 @@ def main():
         #MainMenu {visibility: hidden;}
         footer {visibility: hidden;}
         header {visibility: hidden;}
+        
+        /* Expander Styling */
+        .streamlit-expanderHeader {
+            background-color: #1e293b !important;
+            color: #e2e8f0 !important;
+            border-radius: 8px !important;
+        }
+        
+        /* Audio Player Styling */
+        audio {
+            width: 100%;
+            border-radius: 8px;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -407,33 +484,46 @@ def main():
         <div class='info-card'>
             <h3>📝 Ask Me About:</h3>
             <ul>
-                <li><strong>My Life Story</strong> - Journey from Mechanical to AI</li>
-                <li><strong>My Superpower</strong> - Systematic problem-solving</li>
-                <li><strong>Growth Areas</strong> - Agentic AI, Cloud, Communication</li>
-                <li><strong>Misconceptions</strong> - Software skills perception</li>
-                <li><strong>Pushing Limits</strong> - Weekly prototypes & learning</li>
+                <li><strong>My Life Story</strong> - Journey from Mechanical Engineering to AI Development</li>
+                <li><strong>My #1 Superpower</strong> - Systematic problem-solving approach</li>
+                <li><strong>Top 3 Growth Areas</strong> - Agentic AI, Cloud Architecture, Communication</li>
+                <li><strong>Misconceptions</strong> - What coworkers misunderstand about me</li>
+                <li><strong>Pushing Boundaries</strong> - How I challenge myself weekly</li>
             </ul>
-            <p style='margin-top: 15px; font-size: 0.95rem; opacity: 0.8;'>
-                💡 Click the microphone below and ask any question naturally
+            <p style='margin-top: 18px; font-size: 1rem; opacity: 0.85;'>
+                💡 <strong>Tip:</strong> Click the microphone below and ask any question naturally in your voice
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class='info-card'>
+            <h3>ℹ️ How It Works</h3>
+            <p><strong>Step 1:</strong> Click the microphone and record your question</p>
+            <p><strong>Step 2:</strong> AI transcribes your voice and generates a response</p>
+            <p><strong>Step 3:</strong> Listen to Mahesh's voice answer</p>
+            <p style='margin-top: 15px; font-size: 0.95rem; opacity: 0.75;'>
+                🔧 <strong>Technology Stack:</strong> Whisper STT • HuggingFace LLM • Edge TTS
             </p>
         </div>
         """, unsafe_allow_html=True)
 
     # Conversation History
     if st.session_state.conversation:
-        st.markdown("---")
+        st.markdown("<div class='section-title'>💬 Conversation History</div>", unsafe_allow_html=True)
+        
         for msg in st.session_state.conversation:
             if msg['role'] == 'user':
                 st.markdown(f"""
                     <div class='user-message'>
-                        <div class='message-label'>👤 YOU ASKED:</div>
+                        <div class='message-label'>👤 You Asked</div>
                         <div class='message-content'>{msg['content']}</div>
                     </div>
                 """, unsafe_allow_html=True)
             else:
                 st.markdown(f"""
                     <div class='assistant-message'>
-                        <div class='message-label'>🎙️ MAHESH:</div>
+                        <div class='message-label'>🎙️ Mahesh Replied</div>
                         <div class='message-content'>{msg['content']}</div>
                     </div>
                 """, unsafe_allow_html=True)
@@ -448,8 +538,8 @@ def main():
             st.rerun()
 
     # Voice Input Section
-    st.markdown("### 🎤 Record Your Question")
-    audio_input = st.audio_input("Click to start recording")
+    st.markdown("<div class='section-title'>🎤 Record Your Question</div>", unsafe_allow_html=True)
+    audio_input = st.audio_input("Click to start recording your question")
 
     if audio_input:
         # Process audio
@@ -458,14 +548,14 @@ def main():
             tmp_path = tmp.name
 
         # Step 1: Speech Recognition
-        with st.spinner("🎧 Listening..."):
+        with st.spinner("🎧 Listening to your question..."):
             question, listen_time = st.session_state.audio.listen(tmp_path)
             os.unlink(tmp_path)
         
         if not question:
             st.markdown("""
                 <div class='error-box'>
-                    ❌ <strong>Could not understand audio.</strong> Please try again with clear speech.
+                    ❌ <strong>Could not understand audio.</strong> Please try recording again with clear speech.
                 </div>
             """, unsafe_allow_html=True)
             st.stop()
@@ -473,12 +563,12 @@ def main():
         # Display recognized question
         st.markdown(f"""
             <div class='status-box'>
-                ✅ <strong>I heard:</strong> "{question}"
+                ✅ <strong>I heard you say:</strong> "{question}"
             </div>
         """, unsafe_allow_html=True)
 
         # Step 2: Generate Response
-        with st.spinner("🧠 Thinking..."):
+        with st.spinner("🧠 Thinking and generating response..."):
             answer, think_time = st.session_state.brain.think(question)
         
         if not answer:
@@ -490,20 +580,20 @@ def main():
             st.stop()
 
         # Step 3: Text to Speech
-        with st.spinner("🗣️ Generating voice..."):
+        with st.spinner("🗣️ Converting to voice..."):
             audio_bytes, speak_time = st.session_state.audio.speak(answer)
 
         # Display Result
         st.markdown(f"""
             <div class='user-message'>
-                <div class='message-label'>👤 YOU ASKED:</div>
+                <div class='message-label'>👤 You Asked</div>
                 <div class='message-content'>{question}</div>
             </div>
         """, unsafe_allow_html=True)
         
         st.markdown(f"""
             <div class='assistant-message'>
-                <div class='message-label'>🎙️ MAHESH:</div>
+                <div class='message-label'>🎙️ Mahesh Replied</div>
                 <div class='message-content'>{answer}</div>
             </div>
         """, unsafe_allow_html=True)
@@ -526,29 +616,15 @@ def main():
             # Performance metrics in expander
             with st.expander("⚡ Performance Details"):
                 col1, col2, col3 = st.columns(3)
-                col1.metric("🎧 Listening", f"{listen_time:.1f}s")
-                col2.metric("🧠 Processing", f"{think_time:.1f}s")
-                col3.metric("🗣️ Speaking", f"{speak_time:.1f}s")
+                col1.metric("🎧 Listening", f"{listen_time:.2f}s")
+                col2.metric("🧠 Processing", f"{think_time:.2f}s")
+                col3.metric("🗣️ Speaking", f"{speak_time:.2f}s")
         else:
             st.markdown("""
                 <div class='error-box'>
-                    ⚠️ <strong>Voice generation failed.</strong> Text response shown above.
+                    ⚠️ <strong>Voice generation failed.</strong> Text response is shown above.
                 </div>
             """, unsafe_allow_html=True)
-
-    # Footer Info
-    if len(st.session_state.conversation) == 0:
-        st.markdown("""
-        <div class='info-card' style='margin-top: 30px;'>
-            <h3>ℹ️ How It Works</h3>
-            <p><strong>1. Record:</strong> Click the microphone and ask your question</p>
-            <p><strong>2. Process:</strong> AI transcribes, thinks, and responds</p>
-            <p><strong>3. Listen:</strong> Hear Mahesh's voice answer</p>
-            <p style='margin-top: 15px; font-size: 0.9rem; opacity: 0.7;'>
-                🔧 Powered by: Whisper STT • HuggingFace LLM • Edge TTS
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
