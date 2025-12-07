@@ -59,7 +59,7 @@ RESPONSE STYLE:
 class Config:
     HF_TOKEN = st.secrets["HF_TOKEN"]
     MODEL_STT = "openai/whisper-large-v3-turbo"
-    VOICE_MALE = "en-US-GuyNeural"  # Professional male voice
+    VOICE_MALE = "en-IN-PrabhatNeural"  # Indian male voice - deep and professional
     APP_TITLE = "Mahesh AI Voice Agent"
     APP_ICON = "🎙️"
 
@@ -190,7 +190,7 @@ class BrainEngine:
         return False
 
     def think(self, question):
-        """Generate contextually accurate response as Mahesh"""
+        """Generate contextually accurate response as Mahesh - OPTIMIZED FOR SPEED"""
         if not self.model_id:
             self.test_connection()
             if not self.model_id:
@@ -207,7 +207,7 @@ class BrainEngine:
             response = self.client.chat_completion(
                 messages=messages,
                 model=self.model_id,
-                max_tokens=250,
+                max_tokens=150,  # Reduced for faster response
                 temperature=0.7
             )
             
@@ -215,22 +215,8 @@ class BrainEngine:
             return answer, (time.time() - start_t)
             
         except Exception:
-            # Fallback to backup models
-            backups = ["mistralai/Mistral-7B-Instruct-v0.2", "HuggingFaceH4/zephyr-7b-beta"]
-            for backup in backups:
-                try:
-                    response = self.client.chat_completion(
-                        messages=[
-                            {"role": "system", "content": MAHESH_PERSONA},
-                            {"role": "user", "content": question}
-                        ],
-                        model=backup,
-                        max_tokens=250
-                    )
-                    return response.choices[0].message.content.strip(), 0.0
-                except:
-                    continue
-            return None, 0.0
+            # Quick fallback
+            return "I'm having trouble connecting. Please try again.", 0.0
 
 # ==============================================================================
 # PROFESSIONAL STREAMLIT UI - DARK THEME
@@ -438,6 +424,27 @@ def main():
             transform: translateY(-2px);
         }
         
+        /* New Chat Button - ChatGPT Style */
+        .new-chat-button {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            margin: 20px 0;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .new-chat-button:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+        
         /* Mobile Responsive */
         @media (max-width: 768px) {
             .pro-header h1 {
@@ -567,9 +574,18 @@ def main():
             🔧 **Tech**: Whisper STT • HuggingFace LLM • Edge TTS
             """)
 
-    # Conversation History
+    # Conversation History with New Chat Button (ChatGPT Style)
     if st.session_state.conversation:
         st.markdown("<div class='section-title'>💬 Conversation History</div>", unsafe_allow_html=True)
+        
+        # New Chat Button at top (like ChatGPT)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.button("➕ New Chat", use_container_width=True, key="new_chat_top"):
+                st.session_state.conversation = []
+                st.rerun()
+        
+        st.markdown("<br>", unsafe_allow_html=True)
         
         for msg in st.session_state.conversation:
             if msg['role'] == 'user':
@@ -591,10 +607,6 @@ def main():
                     st.audio(msg['audio'], format="audio/mp3")
         
         st.markdown("---")
-        
-        if st.button("🔄 Start New Conversation", use_container_width=True):
-            st.session_state.conversation = []
-            st.rerun()
 
     # Voice Input Section
     st.markdown("<div class='section-title'>🎤 Record Your Question</div>", unsafe_allow_html=True)
@@ -676,13 +688,6 @@ def main():
                 "content": answer,
                 "audio": audio_bytes
             })
-            
-            # Performance metrics in expander
-            with st.expander("⚡ Performance Details"):
-                col1, col2, col3 = st.columns(3)
-                col1.metric("🎧 Listening", f"{listen_time:.2f}s")
-                col2.metric("🧠 Processing", f"{think_time:.2f}s")
-                col3.metric("🗣️ Speaking", f"{speak_time:.2f}s")
         else:
             st.markdown("""
                 <div class='error-box'>
@@ -692,4 +697,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-           
+                  
