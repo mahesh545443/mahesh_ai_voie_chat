@@ -59,14 +59,8 @@ RESPONSE STYLE:
 class Config:
     HF_TOKEN = st.secrets["HF_TOKEN"]
     MODEL_STT = "openai/whisper-large-v3-turbo"
-    # Multiple male voice options - will try in order
-    VOICE_OPTIONS = [
-        "en-US-GuyNeural",      # Deep American male
-        "en-US-EricNeural",     # Young American male
-        "en-GB-RyanNeural",     # British male
-        "en-IN-PrabhatNeural"   # Indian male
-    ]
-    VOICE_MALE = "en-US-GuyNeural"  # Primary choice
+    # FORCE MALE VOICE - Single choice for speed
+    VOICE_MALE = "en-US-AndrewNeural"  # Professional deep male voice
     APP_TITLE = "Mahesh AI Voice Agent"
     APP_ICON = "🎙️"
 
@@ -105,49 +99,67 @@ class AudioEngine:
             except Exception:
                 return None, 0.0
 
-    async def _generate_speech_edge(self, text, output_file, voice):
-        """Generate high-quality speech using Edge TTS with specific voice"""
-        communicate = edge_tts.Communicate(text, voice)
+    async def _generate_speech_edge(self, text, output_file):
+        """Generate speech using Edge TTS - MALE VOICE ONLY"""
+        communicate = edge_tts.Communicate(text, Config.VOICE_MALE)
         await communicate.save(output_file)
 
     def speak(self, text):
-        """Convert text to speech - MALE VOICE GUARANTEED"""
+        """Convert text to speech - WORKS ON STREAMLIT CLOUD"""
         start_t = time.time()
         
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
                 tmp_path = tmp.name
 
-            # Try each male voice option until one works
-            for voice in Config.VOICE_OPTIONS:
+            # METHOD 1: Try HuggingFace TTS API (Works on Cloud!)
+            try:
+                audio_data = self.client.text_to_speech(
+                    text,
+                    model="facebook/mms-tts-eng"  # Male-sounding model
+                )
+                
+                with open(tmp_path, "wb") as f:
+                    f.write(audio_data)
+                
+                if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
+                    with open(tmp_path, "rb") as f:
+                        audio_bytes = f.read()
+                    os.unlink(tmp_path)
+                    return audio_bytes, (time.time() - start_t)
+            except Exception as e:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            
+            # METHOD 2: Edge TTS (works locally)
+            try:
                 try:
-                    try:
-                        loop = asyncio.get_event_loop()
-                    except RuntimeError:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                    
-                    if loop.is_running():
-                        import concurrent.futures
-                        with concurrent.futures.ThreadPoolExecutor() as executor:
-                            future = executor.submit(
-                                asyncio.run, 
-                                self._generate_speech_edge(text, tmp_path, voice)
-                            )
-                            future.result(timeout=10)
-                    else:
-                        loop.run_until_complete(self._generate_speech_edge(text, tmp_path, voice))
-                    
-                    if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
-                        with open(tmp_path, "rb") as f:
-                            audio_bytes = f.read()
-                        os.unlink(tmp_path)
-                        return audio_bytes, (time.time() - start_t)
-                except:
-                    continue
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        future = executor.submit(
+                            asyncio.run, 
+                            self._generate_speech_edge(text, tmp_path)
+                        )
+                        future.result(timeout=8)
+                else:
+                    loop.run_until_complete(self._generate_speech_edge(text, tmp_path))
+                
+                if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
+                    with open(tmp_path, "rb") as f:
+                        audio_bytes = f.read()
+                    os.unlink(tmp_path)
+                    return audio_bytes, (time.time() - start_t)
+            except Exception:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
 
-            # If all Edge TTS voices fail, use gTTS as last resort
-            # Note: gTTS doesn't have male/female distinction, but it's better than nothing
+            # METHOD 3: gTTS fallback
             tts = gTTS(text=text, lang='en', slow=False, tld='com')
             tts.save(tmp_path)
             with open(tmp_path, "rb") as f:
@@ -580,3 +592,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+       
+
+  
