@@ -1,7 +1,7 @@
 """
 ================================================================================
 PROJECT: MAHESH AI VOICE AGENT - STAGE 1 SUBMISSION
-VERSION: 9.4 (STREAMLIT CLOUD DEPLOYMENT FIXED - FINAL ST.MIC_RECORDER FIX)
+VERSION: 9.3 (STREAMLIT CLOUD DEPLOYMENT FIXED)
 AUTHOR: Mahesh
 DESCRIPTION:
     Voice bot that answers personality questions AS MAHESH using:
@@ -13,7 +13,6 @@ DESCRIPTION:
     1. nest_asyncio.apply() moved to global scope (Line 17)
     2. Added proper asyncio loop handling for Streamlit Cloud
     3. Fallback to get_event_loop() for better compatibility
-    4. FIXED: Replaced non-existent st.audio_recorder with st.mic_recorder
 ================================================================================
 """
 
@@ -26,7 +25,6 @@ import tempfile
 import time
 import os
 import nest_asyncio
-from io import BytesIO # 💡 Added for better audio handling
 
 # 🔊 CRITICAL FIX: Apply nest_asyncio at module level (before any async calls)
 nest_asyncio.apply()
@@ -454,24 +452,13 @@ def main():
 
     # Voice Input
     st.markdown("### 🎤 Ask Your Question")
-    # 💡 CRITICAL FIX: Use the correct built-in function st.mic_recorder
-    audio_data = st.mic_recorder(
-        # The label argument is the only necessary one.
-        label="Click to Record Question", 
-        # The default format is WAV, which is perfect for Whisper.
-        # Arguments like icon and sample_rate are not supported by the built-in widget.
-    ) 
+    audio_input = st.audio_input("Click to record")
 
-    # Check if the audio data has a non-empty bytes attribute (meaning a recording was made)
-    if audio_data and 'bytes' in audio_data:
-        # Get audio bytes as an in-memory buffer
-        audio_buffer = BytesIO(audio_data['bytes'])
-        
+    if audio_input:
         with st.status("⚡ Processing...", expanded=True) as status:
             # Step 1: Speech to Text
-            # Write the in-memory audio buffer to a temporary file for the HuggingFace client
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
-                tmp.write(audio_buffer.getvalue())
+                tmp.write(audio_input.getvalue())
                 tmp_path = tmp.name
 
             st.write("👂 Listening...")
@@ -533,16 +520,8 @@ def main():
                 col2.metric("Think", f"{think_time:.1f}s")
                 col3.metric("Speak", f"{speak_time:.1f}s")
                 col4.metric("Total", f"{listen_time+think_time+speak_time:.1f}s")
-            
-            # Rerun to clear the mic_recorder widget state
-            st.rerun()
         else:
             st.warning("🔊 Voice output failed, but text response is shown above.")
-            # Still save to history for text trace
-            st.session_state.history.append({"role": "user", "content": question})
-            st.session_state.history.append({"role": "mahesh", "content": answer})
-            st.rerun()
-
 
     # Instructions for first use 
     if not st.session_state.history:
@@ -560,3 +539,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
