@@ -25,12 +25,12 @@ nest_asyncio.apply()
 MAHESH_PERSONA = """You are MAHESH - a real person answering interview questions.
 
 CORE IDENTITY:
-You are a Mechanical Engineer who transitioned to AI Development. You have a PG in Data Science and Machine Learning. You combine engineering rigor with cutting-edge AI expertise.
+You are a Mechanical Engineer who transitioned to AI Development. You completed your PG in Data Science and Advanced Machine Learning. You are currently working as an AI Engineer with 2.5+ years of professional experience.
 
 YOUR EXACT ANSWERS TO THE 5 CORE QUESTIONS:
 
 1. LIFE STORY:
-"I started my career as a Mechanical Engineer, working on manufacturing systems and automation. But I realized the future was in software, not just mechanics. So I spent my nights learning Python, building small projects, and slowly transitioning into AI development. Now I work on building intelligent agents and optimizing LLM systems - combining my engineering mindset with cutting-edge AI."
+"I did my B.Tech in Mechanical Engineering and worked in that field initially. But I was always fascinated by AI and its potential, so I pursued my PG in Data Science and Advanced Machine Learning. After completing that, I transitioned into AI engineering. Now I have 2.5+ years of experience building intelligent systems, working with LLMs, and developing AI agents. It's been an exciting journey from mechanical systems to intelligent software systems."
 
 2. NUMBER ONE SUPERPOWER:
 "My superpower is systematic problem-solving from my mechanical engineering background. I break down complex software problems like I would a mechanical system - identifying components, understanding dependencies, and optimizing the whole system. This makes me great at debugging, architecture design, and finding efficient solutions."
@@ -499,20 +499,25 @@ def main():
     with st.sidebar:
         st.markdown("### 🎯 Quick Actions")
         
-        if st.button("🗑️ Clear Conversation History", use_container_width=True):
+        # New Chat Button in Sidebar (ChatGPT Style)
+        if st.button("➕ New Chat", use_container_width=True, key="sidebar_new_chat"):
+            st.session_state.conversation = []
+            st.rerun()
+        
+        if st.button("🗑️ Clear History", use_container_width=True):
             st.session_state.conversation = []
             st.rerun()
         
         st.markdown("---")
         
-        st.markdown("### 👤 About")
+        st.markdown("### 👤 About Mahesh")
         st.markdown("""
-        **Mahesh** - AI Engineer
+        **AI Engineer** (2.5+ years exp)
         
-        🔹 Mechanical Engineer → AI Developer  
-        🔹 PG in Data Science & ML  
-        🔹 Specializes in Agentic AI  
-        🔹 Builds weekly prototypes  
+        🎓 B.Tech Mechanical Engineering  
+        🎓 PG in Data Science & Advanced ML  
+        💼 Currently: AI Engineer  
+        🚀 Specializes in Agentic AI & LLMs  
         """)
         
         st.markdown("---")
@@ -523,6 +528,16 @@ def main():
         - **AI Brain**: HuggingFace LLM
         - **Text-to-Speech**: Edge TTS (Male Voice)
         """)
+        
+        st.markdown("---")
+        
+        st.markdown("### 💡 Tips")
+        st.markdown("""
+        - Speak in a quiet place
+        - Ask questions clearly
+        - One question at a time
+        """)
+
 
     # Show example questions if first time (in expandable section)
     if len(st.session_state.conversation) == 0:
@@ -569,7 +584,7 @@ def main():
             st.markdown("""
             **Step 1:** Record your question  
             **Step 2:** AI processes and responds  
-            **Step 3:** Listen to Mahesh's voice  
+            **Step 3:** Listen to the voice response  
             
             🔧 **Tech**: Whisper STT • HuggingFace LLM • Edge TTS
             """)
@@ -577,15 +592,6 @@ def main():
     # Conversation History with New Chat Button (ChatGPT Style)
     if st.session_state.conversation:
         st.markdown("<div class='section-title'>💬 Conversation History</div>", unsafe_allow_html=True)
-        
-        # New Chat Button at top (like ChatGPT)
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            if st.button("➕ New Chat", use_container_width=True, key="new_chat_top"):
-                st.session_state.conversation = []
-                st.rerun()
-        
-        st.markdown("<br>", unsafe_allow_html=True)
         
         for msg in st.session_state.conversation:
             if msg['role'] == 'user':
@@ -697,4 +703,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-                  
+       
