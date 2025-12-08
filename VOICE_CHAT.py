@@ -1,30 +1,25 @@
 """
 ================================================================================
-MAHESH AI VOICE AGENT - PROFESSIONAL EDITION V4
-VERSION: 13.0 - All Issues Fixed
-✅ Speed optimized (faster processing)
-✅ Male voice fixed (reliable across all platforms)
-✅ Consistent color scheme for all messages
-✅ Better error handling
+MAHESH AI VOICE AGENT - PROFESSIONAL EDITION V2
+VERSION: 11.0 - Production Ready with Sidebar
+AUTHOR: Mahesh
 ================================================================================
 """
 
 import streamlit as st
 from huggingface_hub import InferenceClient
 import edge_tts
+from gtts import gTTS
 import asyncio
 import tempfile
 import time
 import os
 import nest_asyncio
-import numpy as np
-from scipy import signal
-import librosa
 
 nest_asyncio.apply()
 
 # ==============================================================================
-# MAHESH'S PERSONA
+# MAHESH'S PERSONA - UPDATED REALISTIC VERSION
 # ==============================================================================
 
 MAHESH_PERSONA = """You are MAHESH - a real person answering interview questions.
@@ -58,136 +53,86 @@ RESPONSE STYLE:
 - For other questions, maintain consistency with this background"""
 
 # ==============================================================================
-# CONFIGURATION - OPTIMIZED FOR SPEED AND RELIABILITY
+# CONFIGURATION - FIXED FOR MALE VOICE
 # ==============================================================================
 
 class Config:
     HF_TOKEN = st.secrets["HF_TOKEN"]
     MODEL_STT = "openai/whisper-large-v3-turbo"
-    
-    # MALE VOICE OPTIONS (in priority order)
-    VOICES_MALE = [
-        "en-US-AndrewNeural",      # Deep professional male
-        "en-US-GuyNeural",          # Clear male voice
-        "en-GB-RyanNeural",         # British male
-        "en-IN-PrabhatNeural"       # Indian English male
-    ]
-    
+    # FORCE MALE VOICE - Single choice for speed
+    VOICE_MALE = "en-US-AndrewNeural"  # Professional deep male voice
     APP_TITLE = "Mahesh AI Voice Agent"
     APP_ICON = "🎙️"
-    NOISE_THRESHOLD = 0.02
-    MIN_AUDIO_LENGTH = 0.5
 
 # ==============================================================================
-# AUDIO PROCESSING ENGINE - OPTIMIZED
-# ==============================================================================
-
-class AudioProcessor:
-    """Fast audio processing with noise cancellation"""
-    
-    @staticmethod
-    def reduce_noise(audio_data, sr=16000):
-        """Quick noise reduction"""
-        try:
-            if audio_data.dtype != np.float32:
-                audio_data = audio_data.astype(np.float32) / 32768.0
-            
-            # Simple but fast noise reduction
-            noise_duration = int(0.3 * sr)  # Reduced from 0.5s
-            noise_sample = audio_data[:min(noise_duration, len(audio_data))]
-            
-            fft_audio = np.fft.fft(audio_data)
-            fft_noise = np.fft.fft(noise_sample)
-            
-            magnitude = np.abs(fft_audio)
-            noise_magnitude = np.abs(fft_noise).mean()
-            
-            cleaned_magnitude = magnitude - (1.2 * noise_magnitude)  # Reduced factor
-            cleaned_magnitude = np.maximum(cleaned_magnitude, 0.1 * magnitude)
-            
-            phase = np.angle(fft_audio)
-            cleaned_fft = cleaned_magnitude * np.exp(1j * phase)
-            cleaned_audio = np.fft.ifft(cleaned_fft).real
-            
-            max_val = np.max(np.abs(cleaned_audio))
-            if max_val > 0:
-                cleaned_audio = cleaned_audio / max_val
-            
-            return cleaned_audio.astype(np.float32)
-        except Exception:
-            return audio_data.astype(np.float32)
-    
-    @staticmethod
-    def validate_audio_length(audio_data, sr=16000):
-        """Check if audio is long enough"""
-        duration = len(audio_data) / sr
-        return duration >= Config.MIN_AUDIO_LENGTH
-
-# ==============================================================================
-# AUDIO ENGINE - SPEED OPTIMIZED WITH RELIABLE MALE VOICE
+# ENHANCED AUDIO ENGINE - MALE VOICE PRIORITY
 # ==============================================================================
 
 class AudioEngine:
     def __init__(self):
         self.client = InferenceClient(token=Config.HF_TOKEN)
-        self.processor = AudioProcessor()
 
     def listen(self, audio_path):
-        """Fast speech recognition"""
+        """Enhanced speech recognition with noise filtering"""
         try:
-            audio_data, sr = librosa.load(audio_path, sr=16000, mono=True)
-            
-            if not self.processor.validate_audio_length(audio_data, sr):
-                return None, "SHORT_AUDIO"
-            
-            cleaned_audio = self.processor.reduce_noise(audio_data, sr)
-            
-            cleaned_path = audio_path.replace(".wav", "_cleaned.wav")
-            import soundfile as sf
-            sf.write(cleaned_path, cleaned_audio, sr)
-            
             start_t = time.time()
-            
             response = self.client.automatic_speech_recognition(
-                cleaned_path,
+                audio_path, 
                 model=Config.MODEL_STT
             )
+            transcription = response.text.strip()
             
-            transcription = response.text.strip() if response.text else None
-            
-            if os.path.exists(cleaned_path):
-                os.unlink(cleaned_path)
-            
-            if not transcription or len(transcription) < 3:
-                return None, "NO_SPEECH"
-            
-            if len(transcription.split()) < 2:
-                return None, "UNCLEAR"
-            
+            if len(transcription) < 3:
+                return None, 0.0
+                
             return transcription, (time.time() - start_t)
-            
-        except Exception as e:
-            return None, "ERROR"
-
-    async def _generate_speech_edge(self, text, output_file, voice):
-        """Generate speech with specified voice"""
-        try:
-            communicate = edge_tts.Communicate(text, voice)
-            await communicate.save(output_file)
-            return True
         except Exception:
-            return False
+            try:
+                response = self.client.automatic_speech_recognition(
+                    audio_path, 
+                    model="openai/whisper-medium"
+                )
+                transcription = response.text.strip()
+                if len(transcription) < 3:
+                    return None, 0.0
+                return transcription, 0.0
+            except Exception:
+                return None, 0.0
+
+    async def _generate_speech_edge(self, text, output_file):
+        """Generate speech using Edge TTS - MALE VOICE ONLY"""
+        communicate = edge_tts.Communicate(text, Config.VOICE_MALE)
+        await communicate.save(output_file)
 
     def speak(self, text):
-        """RELIABLE MALE VOICE - Multiple fallback options"""
+        """Convert text to speech - WORKS ON STREAMLIT CLOUD"""
         start_t = time.time()
         
-        # Try Edge TTS with multiple male voices
-        for voice in Config.VOICES_MALE:
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+                tmp_path = tmp.name
+
+            # METHOD 1: Try HuggingFace TTS API (Works on Cloud!)
             try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-                    tmp_path = tmp.name
+                audio_data = self.client.text_to_speech(
+                    text,
+                    model="facebook/mms-tts-eng"  # Male-sounding model
+                )
                 
+                with open(tmp_path, "wb") as f:
+                    f.write(audio_data)
+                
+                if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
+                    with open(tmp_path, "rb") as f:
+                        audio_bytes = f.read()
+                    os.unlink(tmp_path)
+                    return audio_bytes, (time.time() - start_t)
+            except Exception as e:
+                if os.path.exists(tmp_path):
+                    os.unlink(tmp_path)
+            
+            # METHOD 2: Edge TTS (works locally)
+            try:
                 try:
                     loop = asyncio.get_event_loop()
                 except RuntimeError:
@@ -198,64 +143,36 @@ class AudioEngine:
                     import concurrent.futures
                     with concurrent.futures.ThreadPoolExecutor() as executor:
                         future = executor.submit(
-                            asyncio.run,
-                            self._generate_speech_edge(text, tmp_path, voice)
+                            asyncio.run, 
+                            self._generate_speech_edge(text, tmp_path)
                         )
-                        success = future.result(timeout=8)  # Faster timeout
+                        future.result(timeout=8)
                 else:
-                    success = loop.run_until_complete(
-                        self._generate_speech_edge(text, tmp_path, voice)
-                    )
+                    loop.run_until_complete(self._generate_speech_edge(text, tmp_path))
                 
-                if success and os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 5000:
+                if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 1000:
                     with open(tmp_path, "rb") as f:
                         audio_bytes = f.read()
                     os.unlink(tmp_path)
-                    return audio_bytes, (time.time() - start_t), voice
-                
-                if os.path.exists(tmp_path):
-                    os.unlink(tmp_path)
-                    
+                    return audio_bytes, (time.time() - start_t)
             except Exception:
                 if os.path.exists(tmp_path):
-                    try:
-                        os.unlink(tmp_path)
-                    except:
-                        pass
-                continue
-        
-        # If all Edge TTS voices fail, try HuggingFace
-        try:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
-                tmp_path = tmp.name
-            
-            audio_data = self.client.text_to_speech(
-                text,
-                model="facebook/mms-tts-eng"
-            )
-            
-            with open(tmp_path, "wb") as f:
-                f.write(audio_data)
-            
-            if os.path.exists(tmp_path) and os.path.getsize(tmp_path) > 5000:
-                with open(tmp_path, "rb") as f:
-                    audio_bytes = f.read()
-                os.unlink(tmp_path)
-                return audio_bytes, (time.time() - start_t), "HuggingFace"
-            else:
-                if os.path.exists(tmp_path):
                     os.unlink(tmp_path)
+
+            # METHOD 3: gTTS fallback
+            tts = gTTS(text=text, lang='en', slow=False, tld='com')
+            tts.save(tmp_path)
+            with open(tmp_path, "rb") as f:
+                audio_bytes = f.read()
+            os.unlink(tmp_path)
+            
+            return audio_bytes, (time.time() - start_t)
+            
         except Exception:
-            if os.path.exists(tmp_path):
-                try:
-                    os.unlink(tmp_path)
-                except:
-                    pass
-        
-        return None, 0.0, None
+            return None, 0.0
 
 # ==============================================================================
-# BRAIN ENGINE - SPEED OPTIMIZED
+# BRAIN ENGINE - OPTIMIZED FOR SPEED
 # ==============================================================================
 
 class BrainEngine:
@@ -265,7 +182,7 @@ class BrainEngine:
         self.test_connection()
         
     def test_connection(self):
-        """Test and select fastest model"""
+        """Test and select the best available model"""
         models = [
             "meta-llama/Llama-3.2-3B-Instruct",
             "mistralai/Mistral-7B-Instruct-v0.2",
@@ -287,7 +204,7 @@ class BrainEngine:
         return False
 
     def think(self, question):
-        """Fast response generation"""
+        """Generate response - OPTIMIZED FOR SPEED"""
         if not self.model_id:
             self.test_connection()
             if not self.model_id:
@@ -312,10 +229,10 @@ class BrainEngine:
             return answer, (time.time() - start_t)
             
         except Exception:
-            return None, 0.0
+            return "I'm having trouble connecting. Please try again.", 0.0
 
 # ==============================================================================
-# STREAMLIT UI - CONSISTENT COLOR SCHEME
+# STREAMLIT UI - DARK THEME WITH SIDEBAR
 # ==============================================================================
 
 def main():
@@ -323,10 +240,10 @@ def main():
         page_title=Config.APP_TITLE,
         page_icon=Config.APP_ICON,
         layout="centered",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded"  # SIDEBAR VISIBLE
     )
     
-    # CONSISTENT COLOR THEME CSS
+    # PROFESSIONAL DARK THEME CSS
     st.markdown("""
         <style>
         /* Dark Background */
@@ -373,23 +290,25 @@ def main():
             color: #f0f0f0;
         }
         
-        /* CONSISTENT MESSAGE COLORS - Same as header gradient */
-        .user-message, .assistant-message {
-            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+        /* User Message */
+        .user-message {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             color: #ffffff;
             padding: 20px 24px;
-            border-radius: 18px;
-            margin: 20px 0;
-            box-shadow: 0 4px 16px rgba(99, 102, 241, 0.3);
-        }
-        
-        .user-message {
             border-radius: 18px 18px 4px 18px;
+            margin: 20px 0;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
             animation: slideInRight 0.4s ease-out;
         }
         
+        /* Assistant Message */
         .assistant-message {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #ffffff;
+            padding: 20px 24px;
             border-radius: 18px 18px 18px 4px;
+            margin: 20px 0;
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
             animation: slideInLeft 0.4s ease-out;
         }
         
@@ -399,7 +318,6 @@ def main():
             margin-bottom: 10px;
             color: #ffffff;
             text-transform: uppercase;
-            opacity: 0.95;
         }
         
         .message-content {
@@ -421,24 +339,6 @@ def main():
         .error-box {
             background: linear-gradient(135deg, #991b1b 0%, #b91c1c 100%);
             border-left: 5px solid #ef4444;
-            padding: 18px 20px;
-            border-radius: 10px;
-            margin: 18px 0;
-            color: #ffffff;
-        }
-        
-        .warning-box {
-            background: linear-gradient(135deg, #78350f 0%, #92400e 100%);
-            border-left: 5px solid #f59e0b;
-            padding: 18px 20px;
-            border-radius: 10px;
-            margin: 18px 0;
-            color: #ffffff;
-        }
-        
-        .success-box {
-            background: linear-gradient(135deg, #065f46 0%, #047857 100%);
-            border-left: 5px solid #10b981;
             padding: 18px 20px;
             border-radius: 10px;
             margin: 18px 0;
@@ -497,24 +397,24 @@ def main():
         st.session_state.brain = BrainEngine()
         st.session_state.audio = AudioEngine()
         st.session_state.conversation = []
-        st.session_state.recorder_key = 0
 
     # ==================== SIDEBAR ====================
     with st.sidebar:
         st.markdown("### 🎯 Quick Actions")
         
+        # New Chat Button (ChatGPT Style)
         if st.button("➕ New Chat", use_container_width=True, key="new_chat_sidebar"):
             st.session_state.conversation = []
-            st.session_state.recorder_key += 1
             st.rerun()
         
+        # Clear History Button
         if st.button("🗑️ Clear History", use_container_width=True, key="clear_history"):
             st.session_state.conversation = []
-            st.session_state.recorder_key += 1
             st.rerun()
         
         st.markdown("---")
         
+        # About Section
         st.markdown("### 👤 About Mahesh")
         st.markdown("""
         **AI Engineer** (2.5+ years)
@@ -528,27 +428,28 @@ def main():
         
         st.markdown("---")
         
+        # Tech Stack
         st.markdown("### 🛠️ Technology Stack")
         st.markdown("""
-        - **Speech Recognition**: Whisper V3 Turbo
-        - **AI Brain**: Llama 3.2 / Mistral  
-        - **Voice Output**: Edge TTS (Male)  
-        - **Noise Filter**: Spectral Subtraction
+        - **Speech Recognition**: Whisper Large V3
+        - **AI Brain**: HuggingFace LLM  
+        - **Voice Output**: Edge TTS (Male)
         """)
         
         st.markdown("---")
         
+        # Tips
         st.markdown("### 💡 Pro Tips")
         st.markdown("""
-        ✓ Speak clearly in quiet place  
+        ✓ Record in a quiet place  
+        ✓ Speak clearly and naturally  
         ✓ Ask one question at a time  
-        ✓ Wait for complete response  
-        ✓ Male voice auto-selected  
-        ✓ Noise auto-cleaned
+        ✓ Wait for voice response
         """)
 
     # ==================== MAIN CONTENT ====================
     
+    # Header
     st.markdown("""
         <div class='pro-header'>
             <h1>🎙️ Mahesh - AI Engineer</h1>
@@ -556,6 +457,7 @@ def main():
         </div>
     """, unsafe_allow_html=True)
 
+    # Example Questions (Collapsible)
     if len(st.session_state.conversation) == 0:
         with st.expander("📝 **Sample Questions to Ask**", expanded=False):
             st.markdown("""
@@ -565,7 +467,16 @@ def main():
             - **Misconceptions** - What people misunderstand about me
             - **Pushing Boundaries** - How I challenge myself weekly
             
-            💡 **Tip**: Speak clearly for best results
+            💡 **Tip**: Speak clearly in a quiet environment for best results
+            """)
+        
+        with st.expander("ℹ️ **How It Works**", expanded=False):
+            st.markdown("""
+            **Step 1:** Click microphone and record your question  
+            **Step 2:** AI transcribes and generates intelligent response  
+            **Step 3:** Listen to the voice response from Mahesh  
+            
+            ⚠️ **Best Results:** Quiet room + Clear speech + One question
             """)
 
     # Conversation History
@@ -595,74 +506,53 @@ def main():
 
     # Voice Input Section
     st.markdown("<div class='section-title'>🎤 Record Your Question</div>", unsafe_allow_html=True)
-    audio_input = st.audio_input(
-        "Click to start recording",
-        key=f"recorder_{st.session_state.recorder_key}"
-    )
+    audio_input = st.audio_input("Click to start recording")
 
     if audio_input:
+        # Process audio
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
             tmp.write(audio_input.getvalue())
             tmp_path = tmp.name
 
         # Step 1: Speech Recognition
-        with st.spinner("🎧 Listening..."):
+        with st.spinner("🎧 Listening to your question..."):
             question, listen_time = st.session_state.audio.listen(tmp_path)
             os.unlink(tmp_path)
         
         if not question:
-            if listen_time == "SHORT_AUDIO":
-                st.markdown("""
-                    <div class='error-box'>
-                        ⏱️ <strong>Audio too short!</strong><br>
-                        Please speak for at least 1 second.
-                    </div>
-                """, unsafe_allow_html=True)
-            elif listen_time == "NO_SPEECH":
-                st.markdown("""
-                    <div class='error-box'>
-                        🔇 <strong>No speech detected!</strong><br>
-                        • Speak closer to microphone<br>
-                        • Find quieter location<br>
-                        • Speak clearly
-                    </div>
-                """, unsafe_allow_html=True)
-            elif listen_time == "UNCLEAR":
-                st.markdown("""
-                    <div class='warning-box'>
-                        ❓ <strong>Speech unclear</strong><br>
-                        Please ask in English and speak clearly.
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown("""
-                    <div class='error-box'>
-                        ❌ <strong>Processing error.</strong> Please try again.
-                    </div>
-                """, unsafe_allow_html=True)
+            st.markdown("""
+                <div class='error-box'>
+                    ❌ <strong>Could not understand audio.</strong><br>
+                    💡 <strong>Tips:</strong><br>
+                    • Record in a quiet place<br>
+                    • Speak clearly at normal pace<br>
+                    • Hold device closer to mouth
+                </div>
+            """, unsafe_allow_html=True)
             st.stop()
 
+        # Display recognized question
         st.markdown(f"""
-            <div class='success-box'>
+            <div class='status-box'>
                 ✅ <strong>Question heard:</strong> "{question}"
             </div>
         """, unsafe_allow_html=True)
 
         # Step 2: Generate Response
-        with st.spinner("🧠 Thinking..."):
+        with st.spinner("🧠 Generating response..."):
             answer, think_time = st.session_state.brain.think(question)
         
         if not answer:
             st.markdown("""
                 <div class='error-box'>
-                    ❌ <strong>Response generation failed.</strong> Try again.
+                    ❌ <strong>Could not generate response.</strong> Please try again.
                 </div>
             """, unsafe_allow_html=True)
             st.stop()
 
         # Step 3: Text to Speech
-        with st.spinner("🗣️ Converting to voice (Male)..."):
-            audio_bytes, speak_time, voice_used = st.session_state.audio.speak(answer)
+        with st.spinner("🗣️ Converting to voice..."):
+            audio_bytes, speak_time = st.session_state.audio.speak(answer)
 
         # Display Result
         st.markdown(f"""
@@ -683,14 +573,7 @@ def main():
         if audio_bytes:
             st.audio(audio_bytes, format="audio/mp3", autoplay=True)
             
-            # Show voice info
-            if voice_used:
-                st.markdown(f"""
-                    <div class='success-box'>
-                        🎤 <strong>Voice used:</strong> {voice_used} (Male)
-                    </div>
-                """, unsafe_allow_html=True)
-            
+            # Save to history
             st.session_state.conversation.append({
                 "role": "user", 
                 "content": question
@@ -703,17 +586,11 @@ def main():
         else:
             st.markdown("""
                 <div class='error-box'>
-                    ⚠️ <strong>Voice generation failed!</strong><br>
-                    <strong>Possible solutions:</strong><br>
-                    • Check your internet connection<br>
-                    • Refresh the page and try again<br>
-                    • Contact support if issue persists<br><br>
-                    Text response is shown above.
+                    ⚠️ <strong>Voice generation failed.</strong> Text response shown above.
                 </div>
             """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
-
-
+       
 
